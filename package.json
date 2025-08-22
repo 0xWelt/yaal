@@ -13,8 +13,8 @@
   },
   "homepage": "https://0xWelt.github.io/Awesome-Vibe-Coding/",
   "scripts": {
-    "dev": "npm run parse-readme && next dev",
-    "build": "npm run parse-readme && next build",
+    "dev": "node scripts/parse-readme.js ${npm_config_readme:-../README.md} && next dev",
+    "build": "node scripts/parse-readme.js ${npm_config_readme:-../README.md} && next build",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

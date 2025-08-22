@@ -7,8 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // 解析README.md并提取软件信息
-function parseReadme() {
-  const readmePath = path.join(__dirname, '..', 'README.md');
+function parseReadme(readmePath) {
   const readmeContent = fs.readFileSync(readmePath, 'utf-8');
 
   const lines = readmeContent.split('\n');
@@ -218,7 +217,22 @@ function generateCategories(
 
 // 主函数
 function main() {
-  console.log('Parsing README.md...');
+  // 解析命令行参数
+  const args = process.argv.slice(2);
+  let readmePath = path.join(__dirname, '..', 'README.md');
+
+  // 检查是否有自定义README路径参数
+  if (args.length > 0) {
+    readmePath = path.resolve(args[0]);
+  }
+
+  console.log(`Parsing README.md from: ${readmePath}`);
+
+  // 检查文件是否存在
+  if (!fs.existsSync(readmePath)) {
+    console.error(`❌ ERROR: README.md not found at: ${readmePath}`);
+    process.exit(1);
+  }
 
   const {
     title,
@@ -226,7 +240,7 @@ function main() {
     tools,
     categoryDescriptions,
     subcategoryDescriptions,
-  } = parseReadme();
+  } = parseReadme(readmePath);
   const categories = generateCategories(
     tools,
     categoryDescriptions,
