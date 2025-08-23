@@ -3,12 +3,43 @@ import path from 'path';
 import yaml from 'js-yaml';
 
 function generateGitHubConfig() {
+  // 显示帮助信息
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`
+Usage: node generate-github-config.js [options]
+
+Options:
+  --config=<path>    Path to configuration file (default: ./yaal.config.yaml)
+  --readme=<path>    Path to README file (default: ./README.md)
+  --help, -h         Show this help message
+
+Examples:
+  node generate-github-config.js
+  node generate-github-config.js --config=./config.yaml
+  node generate-github-config.js --config=./config.yaml --readme=./docs/README.md
+`);
+    return;
+  }
+
   try {
-    const configPath = path.join(process.cwd(), 'yaal.config.yaml');
+    // 解析命令行参数
+    const args = process.argv.slice(2);
+    let configPath = path.resolve(process.cwd(), 'yaal.config.yaml');
+    let readmePath = path.resolve(process.cwd(), 'README.md');
+
+    // 解析命名参数
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (arg.startsWith('--config=')) {
+        configPath = path.resolve(arg.split('=')[1]);
+      } else if (arg.startsWith('--readme=')) {
+        readmePath = path.resolve(arg.split('=')[1]);
+      }
+    }
 
     if (!fs.existsSync(configPath)) {
       console.error(
-        '❌ yaal.config.yaml not found. Please create this file with your GitHub repository URL.'
+        `❌ yaal.config.yaml not found at: ${configPath}. Please create this file with your GitHub repository URL.`
       );
       process.exit(1);
     }
@@ -37,7 +68,6 @@ function generateGitHubConfig() {
     const repo = match[2].replace(/\.git$/, '');
 
     // 从 README 解析标题
-    const readmePath = process.env.README_PATH || './README.md';
     let title = repo;
     try {
       if (fs.existsSync(readmePath)) {

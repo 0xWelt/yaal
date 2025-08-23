@@ -217,13 +217,32 @@ function generateCategories(
 
 // 主函数
 function main() {
+  // 显示帮助信息
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`
+Usage: node parse-readme.js [options]
+
+Options:
+  --readme=<path>    Path to README file (default: ./README.md)
+  --help, -h         Show this help message
+
+Examples:
+  node parse-readme.js
+  node parse-readme.js --readme=./docs/README.md
+`);
+    return;
+  }
+
   // 解析命令行参数
   const args = process.argv.slice(2);
-  let readmePath = path.join(__dirname, '..', 'README.md');
+  let readmePath = path.resolve(process.cwd(), 'README.md');
 
-  // 检查是否有自定义README路径参数
-  if (args.length > 0) {
-    readmePath = path.resolve(args[0]);
+  // 解析命名参数
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('--readme=')) {
+      readmePath = path.resolve(arg.split('=')[1]);
+    }
   }
 
   console.log(`Parsing README.md from: ${readmePath}`);
