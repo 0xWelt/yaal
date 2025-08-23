@@ -24,7 +24,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Define file patterns to monitor
-          PATTERNS="README.md|app/|components/|scripts/|package.json|package-lock.json|next.config.js|tsconfig.json|tailwind.config.js|.github/workflows/"
+          PATTERNS="README.md|app/|components/|scripts/|package.json|package-lock.json|next.config.mjs|tsconfig.json|tailwind.config.js|.github/workflows/|yaal.config.yaml"
 
           # Define detailed file categories
           README_PATTERN="README.md"
@@ -144,6 +144,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate configuration
+        run: node scripts/generate-github-config.js
 
       - name: Parse README and generate data
         run: npm run parse-readme
