@@ -44,8 +44,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // 对于GitHub Pages，使用仓库名作为basePath
   basePath: isGitHubPages ? repositoryName : '',
   assetPrefix: isGitHubPages ? repositoryName : '',
+  // 确保静态导出正确工作
+  distDir: 'out',
 };
 
 export default nextConfig;
