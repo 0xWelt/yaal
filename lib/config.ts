@@ -1,6 +1,7 @@
+import { githubConfig } from './githubConfig';
+
 // Unified environment detection and path configuration
 const isGitHubPages = process.env.NODE_ENV === 'production';
-const repositoryName = '/Awesome-Vibe-Coding';
 
 export const config = {
   // Environment detection
@@ -11,25 +12,26 @@ export const config = {
   },
 
   // Base paths
-  basePath: isGitHubPages ? repositoryName : '',
+  basePath: isGitHubPages ? `/${githubConfig.repo}` : '',
 
   // Data paths (build-time)
   dataPath: {
-    tools: `${isGitHubPages ? repositoryName : ''}/data/tools.json`,
-    categories: `${isGitHubPages ? repositoryName : ''}/data/categories.json`,
+    tools: `${isGitHubPages ? `/${githubConfig.repo}` : ''}/data/tools.json`,
+    categories: `${isGitHubPages ? `/${githubConfig.repo}` : ''}/data/categories.json`,
   },
 
   // Helper function to get full path (build-time)
   getFullPath: (path: string) =>
-    `${isGitHubPages ? repositoryName : ''}${path}`,
+    `${isGitHubPages ? `/${githubConfig.repo}` : ''}${path}`,
 
   // Runtime path utilities for client-side
   runtime: {
     // Get base path for client-side routing
     getBasePath: () => {
       if (typeof window !== 'undefined') {
-        return window.location.pathname.startsWith('/Awesome-Vibe-Coding')
-          ? '/Awesome-Vibe-Coding'
+        const repoName = githubConfig.repo;
+        return window.location.pathname.startsWith(`/${repoName}`)
+          ? `/${repoName}`
           : '';
       }
       return '';
