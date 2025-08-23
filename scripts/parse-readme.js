@@ -222,12 +222,16 @@ function main() {
     console.log(`
 Usage: node parse-readme.js [options]
 
+Automatic file detection:
+  - Checks parent directory first: ../README.md
+  - Falls back to local directory: ./README.md
+
 Options:
-  --readme=<path>    Path to README file (default: ./README.md)
+  --readme=<path>    Path to README file (optional, overrides automatic detection)
   --help, -h         Show this help message
 
 Examples:
-  node parse-readme.js
+  node parse-readme.js                    # Automatic detection
   node parse-readme.js --readme=./docs/README.md
 `);
     return;
@@ -235,9 +239,9 @@ Examples:
 
   // 解析命令行参数
   const args = process.argv.slice(2);
-  let readmePath = path.resolve(process.cwd(), 'README.md');
+  let readmePath = null;
 
-  // 解析命名参数
+  // 解析命名参数（保留向后兼容）
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg.startsWith('--readme=')) {
@@ -245,7 +249,26 @@ Examples:
     }
   }
 
-  console.log(`Parsing README.md from: ${readmePath}`);
+  // 自动查找README文件：先检查父目录，再检查本地目录
+  if (!readmePath) {
+    const parentReadmePath = path.resolve(process.cwd(), '../README.md');
+    const localReadmePath = path.resolve(process.cwd(), 'README.md');
+
+    if (fs.existsSync(parentReadmePath)) {
+      readmePath = parentReadmePath;
+      console.log(`📁 Using parent directory README: ${readmePath}`);
+    } else if (fs.existsSync(localReadmePath)) {
+      readmePath = localReadmePath;
+      console.log(`📁 Using local directory README: ${readmePath}`);
+    } else {
+      console.error(
+        `❌ README.md not found in parent or local directory. Please create this file.`
+      );
+      process.exit(1);
+    }
+  } else {
+    console.log(`Parsing README.md from: ${readmePath}`);
+  }
 
   // 检查文件是否存在
   if (!fs.existsSync(readmePath)) {

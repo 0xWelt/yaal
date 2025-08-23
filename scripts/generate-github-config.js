@@ -8,13 +8,17 @@ function generateGitHubConfig() {
     console.log(`
 Usage: node generate-github-config.js [options]
 
+Automatic file detection:
+  - Checks parent directory first: ../yaal.config.yaml
+  - Falls back to local directory: ./yaal.config.yaml
+
 Options:
-  --config=<path>    Path to configuration file (default: ./yaal.config.yaml)
-  --readme=<path>    Path to README file (default: ./README.md)
+  --config=<path>    Path to configuration file (optional, overrides automatic detection)
+  --readme=<path>    Path to README file (optional, overrides automatic detection)
   --help, -h         Show this help message
 
 Examples:
-  node generate-github-config.js
+  node generate-github-config.js                    # Automatic detection
   node generate-github-config.js --config=./config.yaml
   node generate-github-config.js --config=./config.yaml --readme=./docs/README.md
 `);
@@ -24,10 +28,10 @@ Examples:
   try {
     // 解析命令行参数
     const args = process.argv.slice(2);
-    let configPath = path.resolve(process.cwd(), 'yaal.config.yaml');
-    let readmePath = path.resolve(process.cwd(), 'README.md');
+    let configPath = null;
+    let readmePath = null;
 
-    // 解析命名参数
+    // 解析命名参数（保留向后兼容）
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
       if (arg.startsWith('--config=')) {
@@ -37,11 +41,45 @@ Examples:
       }
     }
 
-    if (!fs.existsSync(configPath)) {
-      console.error(
-        `❌ yaal.config.yaml not found at: ${configPath}. Please create this file with your GitHub repository URL.`
+    // 自动查找配置文件：先检查父目录，再检查本地目录
+    if (!configPath) {
+      const parentConfigPath = path.resolve(
+        process.cwd(),
+        '../yaal.config.yaml'
       );
-      process.exit(1);
+      const localConfigPath = path.resolve(process.cwd(), 'yaal.config.yaml');
+
+      if (fs.existsSync(parentConfigPath)) {
+        configPath = parentConfigPath;
+        console.log(`📁 Using parent directory config: ${configPath}`);
+      } else if (fs.existsSync(localConfigPath)) {
+        configPath = localConfigPath;
+        console.log(`📁 Using local directory config: ${configPath}`);
+      } else {
+        console.error(
+          `❌ yaal.config.yaml not found in parent or local directory. Please create this file with your GitHub repository URL.`
+        );
+        process.exit(1);
+      }
+    }
+
+    // 自动查找README文件：先检查父目录，再检查本地目录
+    if (!readmePath) {
+      const parentReadmePath = path.resolve(process.cwd(), '../README.md');
+      const localReadmePath = path.resolve(process.cwd(), 'README.md');
+
+      if (fs.existsSync(parentReadmePath)) {
+        readmePath = parentReadmePath;
+        console.log(`📁 Using parent directory README: ${readmePath}`);
+      } else if (fs.existsSync(localReadmePath)) {
+        readmePath = localReadmePath;
+        console.log(`📁 Using local directory README: ${readmePath}`);
+      } else {
+        console.error(
+          `❌ README.md not found in parent or local directory. Please create this file.`
+        );
+        process.exit(1);
+      }
     }
 
     const configContent = fs.readFileSync(configPath, 'utf8');

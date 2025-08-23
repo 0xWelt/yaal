@@ -6,18 +6,19 @@ import yaml from 'js-yaml';
 
 // 读取配置文件获取仓库名
 function getRepositoryName() {
-  // 检查是否有通过环境变量或命令行参数指定的配置
-  let configPath = path.join(process.cwd(), 'yaal.config.yaml');
+  // 自动查找配置文件：先检查父目录，再检查本地目录
+  let configPath = null;
   
-  // 检查是否有通过npm config指定的配置
-  const npmConfig = process.env.npm_config_config;
-  if (npmConfig) {
-    configPath = path.resolve(process.cwd(), npmConfig);
-  }
-
-  if (!fs.existsSync(configPath)) {
+  const parentConfigPath = path.resolve(process.cwd(), '../yaal.config.yaml');
+  const localConfigPath = path.resolve(process.cwd(), 'yaal.config.yaml');
+  
+  if (fs.existsSync(parentConfigPath)) {
+    configPath = parentConfigPath;
+  } else if (fs.existsSync(localConfigPath)) {
+    configPath = localConfigPath;
+  } else {
     throw new Error(
-      'yaal.config.yaml not found. Please create this file with your GitHub repository URL.'
+      'yaal.config.yaml not found in parent or local directory. Please create this file with your GitHub repository URL.'
     );
   }
 
