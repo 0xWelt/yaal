@@ -14,7 +14,7 @@
   "homepage": "https://0xWelt.github.io/yaal/",
   "scripts": {
     "dev": "node scripts/generate-github-config.js && next dev",
-    "build": "node scripts/generate-github-config.js && node scripts/parse-readme.js ${npm_config_readme:-../README.md} && next build",
+    "build": "node scripts/generate-github-config.js && node scripts/parse-readme.js && next build",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
