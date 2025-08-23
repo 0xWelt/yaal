@@ -7,25 +7,31 @@ import yaml from 'js-yaml';
 // 读取配置文件获取仓库名
 function getRepositoryName() {
   const configPath = path.join(process.cwd(), 'yaal.config.yaml');
-  
+
   if (!fs.existsSync(configPath)) {
-    throw new Error('yaal.config.yaml not found. Please create this file with your GitHub repository URL.');
+    throw new Error(
+      'yaal.config.yaml not found. Please create this file with your GitHub repository URL.'
+    );
   }
-  
+
   const configContent = fs.readFileSync(configPath, 'utf8');
   const config = yaml.load(configContent) || {};
-  
+
   if (!config.github) {
-    throw new Error('GitHub URL not found in yaal.config.yaml. Please add "github: https://github.com/owner/repo"');
+    throw new Error(
+      'GitHub URL not found in yaal.config.yaml. Please add "github: https://github.com/owner/repo"'
+    );
   }
-  
+
   const url = config.github;
   const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-  
+
   if (!match) {
-    throw new Error(`Invalid GitHub URL format: ${url}. Expected: https://github.com/owner/repo`);
+    throw new Error(
+      `Invalid GitHub URL format: ${url}. Expected: https://github.com/owner/repo`
+    );
   }
-  
+
   return `/${match[2].replace(/\.git$/, '')}`;
 }
 

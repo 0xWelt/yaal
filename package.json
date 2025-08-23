@@ -9,9 +9,9 @@
     "url": "https://github.com/0xWelt/yaal"
   },
   "bugs": {
-    "url": "https://github.com/0xWelt/Awesome-Vibe-Coding/issues"
+    "url": "https://github.com/0xWelt/yaal/issues"
   },
-  "homepage": "https://0xWelt.github.io/Awesome-Vibe-Coding/",
+  "homepage": "https://0xWelt.github.io/yaal/",
   "scripts": {
     "dev": "node scripts/generate-github-config.js && next dev",
     "build": "node scripts/generate-github-config.js && node scripts/parse-readme.js ${npm_config_readme:-../README.md} && next build",
