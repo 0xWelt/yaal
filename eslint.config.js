@@ -4,4 +4,11 @@ const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 });
 
-export default [...compat.extends('next/core-web-vitals', 'prettier')];
+const eslintConfig = [
+  ...compat.extends('next/core-web-vitals', 'prettier'),
+  {
+    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**'],
+  },
+];
+
+export default eslintConfig;
