@@ -13,7 +13,7 @@
   },
   "homepage": "https://0xWelt.github.io/yaal/",
   "scripts": {
-    "dev": "node scripts/generate-github-config.js --config=${npm_config_config:-./yaal.config.yaml} --readme=${npm_config_readme:-./README.md} && next dev",
+    "dev": "node scripts/generate-github-config.js --config=${npm_config_config:-./yaal.config.yaml} --readme=${npm_config_readme:-./README.md} && node scripts/parse-readme.js --readme=${npm_config_readme:-./README.md} && next dev",
     "build": "node scripts/generate-github-config.js --config=${npm_config_config:-./yaal.config.yaml} --readme=${npm_config_readme:-./README.md} && node scripts/parse-readme.js --readme=${npm_config_readme:-./README.md} && next build",
     "start": "next start",
     "lint": "eslint .",
