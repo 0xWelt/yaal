@@ -48,120 +48,71 @@ function parseReadme(readmePath) {
     console.error(
       '❌ ERROR: README.md must have a description after the title'
     );
-    console.error('   Example: # My Awesome List');
-    console.error('   ');
-    console.error('   A curated list of awesome resources');
+    console.error('   Example: > A curated list of awesome tools');
     process.exit(1);
   }
 
+  // 解析工具信息
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
-    // 检测主分类 (## 开头)
-    if (
-      line.startsWith('## ') &&
-      !line.includes('Table of Contents') &&
-      !line.includes('Star History') &&
-      !line.includes('Contributors') &&
-      !line.includes('License')
-    ) {
-      currentCategory = line.replace('## ', '').trim();
-      currentSubcategory = '';
-
-      // 查找主分类的注释信息
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() === '') {
-        j++;
-      }
-      if (j < lines.length && lines[j].trim().startsWith('>')) {
-        categoryDescriptions[currentCategory] = lines[j]
-          .trim()
-          .replace(/^>\s*/, '');
-      }
-      continue;
-    }
-
-    // 检测子分类 (### 开头)
-    if (line.startsWith('### ') && !line.startsWith('### [')) {
-      currentSubcategory = line.replace('### ', '').trim();
-
-      // 查找子分类的注释信息
-      let j = i + 1;
-      while (j < lines.length && lines[j].trim() === '') {
-        j++;
-      }
-      if (j < lines.length && lines[j].trim().startsWith('>')) {
-        subcategoryDescriptions[`${currentCategory}|${currentSubcategory}`] =
-          lines[j].trim().replace(/^>\s*/, '');
-      }
-      continue;
-    }
-
-    // 检测软件条目 (#### [软件名](链接) 或 ### [软件名](链接) 格式)
-    const toolMatch = line.match(/^(####|###) \[([^\]]+)\]\(([^)]+)\)/);
-    if (toolMatch) {
-      const name = toolMatch[2];
-      const url = toolMatch[3];
-
-      // 查找描述（多行，直到遇到下一个标题）
-      let description = '';
-      let j = i + 1;
-      let foundContent = false;
-
-      while (j < lines.length) {
-        const nextLine = lines[j].trim();
-
-        // 如果遇到下一个标题，停止收集
+    // 匹配分类标题
+    const categoryMatch = line.match(/^##\s+(.+)$/);
+    if (categoryMatch) {
+      currentCategory = categoryMatch[1].trim();
+      // 检查下一行是否是分类描述
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
         if (
-          nextLine.startsWith('####') ||
-          nextLine.startsWith('###') ||
-          nextLine.startsWith('##')
+          nextLine &&
+          !nextLine.startsWith('#') &&
+          !nextLine.startsWith('-')
         ) {
-          break;
+          categoryDescriptions[currentCategory] = nextLine
+            .replace(/^>/, '')
+            .trim();
         }
-
-        // 跳过空行，但继续收集后续内容
-        if (nextLine === '') {
-          if (foundContent) {
-            // 如果已经有内容，遇到空行可以停止
-            break;
-          }
-          j++;
-          continue;
-        }
-
-        // 收集描述内容
-        if (description) {
-          description += ' ' + nextLine;
-        } else {
-          description = nextLine;
-        }
-        foundContent = true;
-        j++;
       }
+      continue;
+    }
 
-      // 清理描述文本
-      description = description.replace(/^>/, '').trim();
+    // 匹配子分类标题
+    const subcategoryMatch = line.match(/^###\s+(.+)$/);
+    if (subcategoryMatch) {
+      currentSubcategory = subcategoryMatch[1].trim();
+      // 检查下一行是否是子分类描述
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        if (
+          nextLine &&
+          !nextLine.startsWith('#') &&
+          !nextLine.startsWith('-')
+        ) {
+          subcategoryDescriptions[`${currentCategory}::${currentSubcategory}`] =
+            nextLine.replace(/^>/, '').trim();
+        }
+      }
+      continue;
+    }
 
-      // 根据标题级别决定子分类
-      // 如果是三级标题(###)的工具，直接属于一级分类
-      // 如果是四级标题(####)的工具，属于当前子分类
-      const level = toolMatch[1];
-      const effectiveSubcategory =
-        level === '###'
-          ? '__NO_SUBCATEGORY__'
-          : currentSubcategory || '__NO_SUBCATEGORY__';
+    // 匹配工具条目
+    const toolMatch = line.match(/^-\s+\[([^\]]+)\]\(([^)]+)\)\s*-\s*(.+)$/);
+    if (toolMatch && currentCategory) {
+      const name = toolMatch[1].trim();
+      const url = toolMatch[2].trim();
+      const description = toolMatch[3].trim();
 
-      // 确保tags只包含一级分类
-      const tags = [currentCategory];
+      // 提取域名作为来源
+      const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+      const source = domainMatch ? domainMatch[1] : 'Unknown';
 
       tools.push({
         name,
         url,
         description,
         category: currentCategory,
-        subcategory: effectiveSubcategory,
-        tags: tags,
+        subcategory: currentSubcategory || '__NO_SUBCATEGORY__',
+        source,
       });
     }
   }
@@ -175,7 +126,7 @@ function parseReadme(readmePath) {
   };
 }
 
-// 生成分类数据
+// 生成分类结构
 function generateCategories(
   tools,
   categoryDescriptions,
@@ -192,9 +143,8 @@ function generateCategories(
       };
     }
 
-    // 如果没有子分类，使用主分类作为子分类
-    const effectiveSubcategory = tool.subcategory || tool.category;
-    const subcategoryKey = `${tool.category}|${effectiveSubcategory}`;
+    const effectiveSubcategory = tool.subcategory || '__NO_SUBCATEGORY__';
+    const subcategoryKey = `${tool.category}::${effectiveSubcategory}`;
 
     if (!categories[tool.category].subcategories[effectiveSubcategory]) {
       categories[tool.category].subcategories[effectiveSubcategory] = {
@@ -220,39 +170,23 @@ function main() {
   // 显示帮助信息
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
     console.log(`
-Usage: node parse-readme.js [options]
+Usage: node parse-readme.js
 
 Automatic file detection:
   - Checks parent directory first: ../README.md
   - Falls back to local directory: ./README.md
 
-Options:
-  --readme=<path>    Path to README file (optional, overrides automatic detection)
-  --help, -h         Show this help message
-
 Examples:
   node parse-readme.js                    # Automatic detection
-  node parse-readme.js --readme=./docs/README.md
 `);
     return;
   }
 
-  // 解析命令行参数
-  const args = process.argv.slice(2);
-  let readmePath = null;
-
-  // 解析命名参数（保留向后兼容）
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg.startsWith('--readme=')) {
-      readmePath = path.resolve(arg.split('=')[1]);
-    }
-  }
-
-  // 自动查找README文件：先检查父目录，再检查本地目录
-  if (!readmePath) {
+  try {
+    // 自动查找README文件：先检查父目录，再检查本地目录
     const parentReadmePath = path.resolve(process.cwd(), '../README.md');
     const localReadmePath = path.resolve(process.cwd(), 'README.md');
+    let readmePath;
 
     if (fs.existsSync(parentReadmePath)) {
       readmePath = parentReadmePath;
@@ -266,78 +200,83 @@ Examples:
       );
       process.exit(1);
     }
-  } else {
-    console.log(`Parsing README.md from: ${readmePath}`);
-  }
 
-  // 检查文件是否存在
-  if (!fs.existsSync(readmePath)) {
-    console.error(`❌ ERROR: README.md not found at: ${readmePath}`);
+    console.log(`Parsing README.md from: ${readmePath}`);
+
+    // 检查文件是否存在
+    if (!fs.existsSync(readmePath)) {
+      console.error(`❌ ERROR: README.md not found at: ${readmePath}`);
+      process.exit(1);
+    }
+
+    const {
+      title,
+      description,
+      tools,
+      categoryDescriptions,
+      subcategoryDescriptions,
+    } = parseReadme(readmePath);
+    const categories = generateCategories(
+      tools,
+      categoryDescriptions,
+      subcategoryDescriptions
+    );
+
+    // 创建数据目录 - 只保留public/data，移除重复的data目录
+    const publicDataDir = path.join(__dirname, '..', 'public', 'data');
+
+    // 确保数据目录存在
+    if (!fs.existsSync(publicDataDir)) {
+      fs.mkdirSync(publicDataDir, { recursive: true });
+    }
+
+    // 写入工具数据
+    fs.writeFileSync(
+      path.join(publicDataDir, 'tools.json'),
+      JSON.stringify(tools, null, 2)
+    );
+
+    // 写入分类数据
+    fs.writeFileSync(
+      path.join(publicDataDir, 'categories.json'),
+      JSON.stringify(categories, null, 2)
+    );
+
+    // 写入项目信息
+    const projectData = {
+      title,
+      description,
+      totalTools: tools.length,
+      categories: Object.keys(categories).length,
+    };
+    fs.writeFileSync(
+      path.join(publicDataDir, 'project.json'),
+      JSON.stringify(projectData, null, 2)
+    );
+
+    console.log(`Parsing complete! Found ${tools.length} items`);
+    console.log(`Categories: ${Object.keys(categories).length}`);
+    console.log(`Title: ${title}`);
+    console.log(`Description: ${description}`);
+
+    Object.keys(categories).forEach((category) => {
+      const subcategories = Object.keys(categories[category].subcategories);
+      const totalTools = subcategories.reduce(
+        (sum, sub) =>
+          sum + categories[category].subcategories[sub].tools.length,
+        0
+      );
+      console.log(
+        `- ${category}: ${subcategories.length} subcategories, ${totalTools} items`
+      );
+    });
+  } catch (error) {
+    console.error('❌ Error parsing README:', error.message);
     process.exit(1);
   }
-
-  const {
-    title,
-    description,
-    tools,
-    categoryDescriptions,
-    subcategoryDescriptions,
-  } = parseReadme(readmePath);
-  const categories = generateCategories(
-    tools,
-    categoryDescriptions,
-    subcategoryDescriptions
-  );
-
-  // 创建数据目录 - 只保留public/data，移除重复的data目录
-  const publicDataDir = path.join(__dirname, '..', 'public', 'data');
-
-  if (!fs.existsSync(publicDataDir)) {
-    fs.mkdirSync(publicDataDir, { recursive: true });
-  }
-
-  // 写入工具数据
-  const toolsJson = JSON.stringify(tools, null, 2);
-  fs.writeFileSync(path.join(publicDataDir, 'tools.json'), toolsJson);
-
-  // 写入项目信息
-  const projectInfo = {
-    title,
-    description,
-    itemCount: tools.length,
-    categoryCount: Object.keys(categories).length,
-  };
-  const projectInfoJson = JSON.stringify(projectInfo, null, 2);
-  fs.writeFileSync(path.join(publicDataDir, 'project.json'), projectInfoJson);
-
-  // 写入分类数据
-  const categoriesJson = JSON.stringify(categories, null, 2);
-  fs.writeFileSync(path.join(publicDataDir, 'categories.json'), categoriesJson);
-
-  // 移除旧的data目录
-  const oldDataDir = path.join(__dirname, '..', 'data');
-  if (fs.existsSync(oldDataDir)) {
-    fs.rmSync(oldDataDir, { recursive: true, force: true });
-  }
-
-  console.log(`Parsing complete! Found ${tools.length} items`);
-  console.log(`Categories: ${Object.keys(categories).length}`);
-  console.log(`Title: ${title}`);
-  console.log(`Description: ${description}`);
-
-  // 输出统计信息
-  Object.keys(categories).forEach((category) => {
-    const subcategoryCount = Object.keys(
-      categories[category].subcategories
-    ).length;
-    const itemCount = Object.values(categories[category].subcategories).reduce(
-      (sum, sub) => sum + sub.tools.length,
-      0
-    );
-    console.log(
-      `- ${category}: ${subcategoryCount} subcategories, ${itemCount} items`
-    );
-  });
 }
 
-main();
+// 如果直接运行此脚本
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}
