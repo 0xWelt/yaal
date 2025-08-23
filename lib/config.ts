@@ -30,9 +30,14 @@ export const config = {
     getBasePath: () => {
       if (typeof window !== 'undefined') {
         const repoName = githubConfig.repo;
-        return window.location.pathname.startsWith(`/${repoName}`)
-          ? `/${repoName}`
-          : '';
+        const pathname = window.location.pathname;
+        // Handle both with and without trailing slash
+        if (
+          pathname === `/${repoName}` ||
+          pathname.startsWith(`/${repoName}/`)
+        ) {
+          return `/${repoName}`;
+        }
       }
       return '';
     },
