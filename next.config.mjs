@@ -6,7 +6,14 @@ import yaml from 'js-yaml';
 
 // 读取配置文件获取仓库名
 function getRepositoryName() {
-  const configPath = path.join(process.cwd(), 'yaal.config.yaml');
+  // 检查是否有通过环境变量或命令行参数指定的配置
+  let configPath = path.join(process.cwd(), 'yaal.config.yaml');
+  
+  // 检查是否有通过npm config指定的配置
+  const npmConfig = process.env.npm_config_config;
+  if (npmConfig) {
+    configPath = path.resolve(process.cwd(), npmConfig);
+  }
 
   if (!fs.existsSync(configPath)) {
     throw new Error(
