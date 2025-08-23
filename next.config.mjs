@@ -8,10 +8,10 @@ import yaml from 'js-yaml';
 function getRepositoryName() {
   // 自动查找配置文件：先检查父目录，再检查本地目录
   let configPath = null;
-  
+
   const parentConfigPath = path.resolve(process.cwd(), '../yaal.config.yaml');
   const localConfigPath = path.resolve(process.cwd(), 'yaal.config.yaml');
-  
+
   if (fs.existsSync(parentConfigPath)) {
     configPath = parentConfigPath;
   } else if (fs.existsSync(localConfigPath)) {

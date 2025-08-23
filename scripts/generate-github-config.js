@@ -61,6 +61,36 @@ Examples:
     const owner = match[1];
     const repo = match[2].replace(/\.git$/, '');
 
+    // 读取README获取标题和描述
+    const readmePath = path.resolve(process.cwd(), '../README.md');
+    const readmeContent = fs.readFileSync(readmePath, 'utf-8');
+
+    const titleMatch = readmeContent.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : 'Awesome List';
+
+    let description = '';
+    const readmeLines = readmeContent.split(/\r?\n/);
+    let foundTitle = false;
+    for (let line of readmeLines) {
+      line = line.trim();
+      if (!foundTitle && line.startsWith('# ')) {
+        foundTitle = true;
+        continue;
+      }
+      if (
+        foundTitle &&
+        line &&
+        !line.startsWith('#') &&
+        !line.startsWith('[')
+      ) {
+        description = line.replace(/^>/, '').trim();
+        break;
+      }
+    }
+    if (!description) {
+      description = 'A curated list of awesome resources';
+    }
+
     // 生成 GitHub 配置文件
     const githubConfig = {
       repository: `${owner}/${repo}`,
@@ -74,7 +104,15 @@ Examples:
     const configOutputPath = path.join(process.cwd(), 'lib', 'githubConfig.ts');
     const configContentOutput = `// Auto-generated GitHub configuration
 export const githubConfig = ${JSON.stringify(githubConfig, null, 2)};
-export const siteConfig = ${JSON.stringify(githubConfig, null, 2)};
+export const siteConfig = {
+  title: "${title}",
+  description: "${description}",
+  repository: "${owner}/${repo}",
+  url: "https://github.com/${owner}/${repo}",
+  repositoryName: "${repositoryName}",
+  owner: "${owner}",
+  repo: "${repo}"
+};
 `;
 
     // 确保 lib 目录存在
