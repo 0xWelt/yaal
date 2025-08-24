@@ -60,17 +60,18 @@ function parseReadme(readmePath) {
     const categoryMatch = line.match(/^##\s+(.+)$/);
     if (categoryMatch) {
       currentCategory = categoryMatch[1].trim();
-      // 检查下一行是否是分类描述
-      if (i + 1 < lines.length) {
-        const nextLine = lines[i + 1].trim();
-        if (
-          nextLine &&
-          !nextLine.startsWith('#') &&
-          !nextLine.startsWith('-')
-        ) {
-          categoryDescriptions[currentCategory] = nextLine
-            .replace(/^>/, '')
+      // 查找分类描述（可能在标题后的1-3行内）
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        const descLine = lines[j].trim();
+        if (descLine && descLine.startsWith('>')) {
+          categoryDescriptions[currentCategory] = descLine
+            .replace(/^>\s*/, '')
             .trim();
+          break;
+        }
+        // 如果遇到新的标题，停止查找
+        if (descLine.startsWith('#')) {
+          break;
         }
       }
       continue;
@@ -80,16 +81,17 @@ function parseReadme(readmePath) {
     const subcategoryMatch = line.match(/^###\s+(.+)$/);
     if (subcategoryMatch) {
       currentSubcategory = subcategoryMatch[1].trim();
-      // 检查下一行是否是子分类描述
-      if (i + 1 < lines.length) {
-        const nextLine = lines[i + 1].trim();
-        if (
-          nextLine &&
-          !nextLine.startsWith('#') &&
-          !nextLine.startsWith('-')
-        ) {
+      // 查找子分类描述（可能在标题后的1-3行内）
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        const descLine = lines[j].trim();
+        if (descLine && descLine.startsWith('>')) {
           subcategoryDescriptions[`${currentCategory}::${currentSubcategory}`] =
-            nextLine.replace(/^>/, '').trim();
+            descLine.replace(/^>\s*/, '').trim();
+          break;
+        }
+        // 如果遇到新的标题，停止查找
+        if (descLine.startsWith('#')) {
+          break;
         }
       }
       continue;
