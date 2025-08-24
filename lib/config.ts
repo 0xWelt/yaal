@@ -1,7 +1,11 @@
 import { githubConfig } from './githubConfig';
 
 // Unified environment detection and path configuration
-const isGitHubPages = process.env.NODE_ENV === 'production';
+// GitHub Pages 检测：构建时使用环境变量，运行时使用域名检测
+const isGitHubPages =
+  typeof window !== 'undefined'
+    ? window.location.hostname.endsWith('.github.io')
+    : process.env.NODE_ENV === 'production';
 
 export const config = {
   // Environment detection
@@ -30,8 +34,15 @@ export const config = {
     getBasePath: () => {
       if (typeof window !== 'undefined') {
         const repoName = githubConfig.repo;
+        const hostname = window.location.hostname;
         const pathname = window.location.pathname;
-        // Handle both with and without trailing slash
+
+        // 检测是否在 GitHub Pages 上（通用检测，支持所有用户）
+        if (hostname.endsWith('.github.io')) {
+          return `/${repoName}`;
+        }
+
+        // 备用检测：如果路径已经包含仓库名
         if (
           pathname === `/${repoName}` ||
           pathname.startsWith(`/${repoName}/`)
