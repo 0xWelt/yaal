@@ -178,7 +178,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 transition-colors duration-200 dark:bg-gray-900">
+    <div className="flex min-h-screen flex-col bg-gray-50 transition-colors duration-200 dark:bg-gray-900">
       <Header title={projectInfo.title} description={projectInfo.description} />
 
       <TopNavPanel
@@ -190,7 +190,7 @@ export default function Home() {
         onClearSelection={handleClearTopNavSelection}
       />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto flex-1 px-4 py-8">
         {/* 搜索区域 */}
         <div className="mb-8">
           <SearchBar
@@ -237,6 +237,21 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* 页脚 */}
+      <footer className="container mx-auto px-4 py-8 text-center">
+        <p className="text-sm text-gray-600 transition-colors duration-200 dark:text-gray-400">
+          Powered by{' '}
+          <a
+            href="https://github.com/0xWelt/yaal"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium underline transition-colors duration-200"
+          >
+            0xWelt/yaal
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
