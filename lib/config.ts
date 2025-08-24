@@ -1,11 +1,17 @@
 import { githubConfig } from './githubConfig';
 
 // Unified environment detection and path configuration
-// GitHub Pages 检测：构建时使用环境变量，运行时使用域名检测
-const isGitHubPages =
-  typeof window !== 'undefined'
-    ? window.location.hostname.endsWith('.github.io')
-    : process.env.NODE_ENV === 'production';
+// 更清晰的环境检测逻辑
+const isBuildTime = typeof window === 'undefined';
+const isProductionBuild = process.env.NODE_ENV === 'production';
+
+// 运行时检测是否在 GitHub Pages
+const isRuntimeGitHubPages =
+  typeof window !== 'undefined' &&
+  window.location.hostname.endsWith('.github.io');
+
+// 最终判断：构建时使用环境变量，运行时使用域名检测
+const isGitHubPages = isBuildTime ? isProductionBuild : isRuntimeGitHubPages;
 
 export const config = {
   // Environment detection
