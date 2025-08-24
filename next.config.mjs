@@ -14,8 +14,10 @@ function getRepositoryName() {
 
   if (fs.existsSync(parentConfigPath)) {
     configPath = parentConfigPath;
+    console.log(`📁 Using parent directory config: ${configPath}`);
   } else if (fs.existsSync(localConfigPath)) {
     configPath = localConfigPath;
+    console.log(`📁 Using local directory config: ${configPath}`);
   } else {
     throw new Error(
       'yaal.config.yaml not found in parent or local directory. Please create this file with your GitHub repository URL.'

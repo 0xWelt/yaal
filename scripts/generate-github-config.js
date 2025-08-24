@@ -62,7 +62,22 @@ Examples:
     const repo = match[2].replace(/\.git$/, '');
 
     // 读取README获取标题和描述
-    const readmePath = path.resolve(process.cwd(), '../README.md');
+    // 使用与配置文件相同的优先级逻辑
+    let readmePath;
+    const parentReadmePath = path.resolve(process.cwd(), '../README.md');
+    const localReadmePath = path.resolve(process.cwd(), 'README.md');
+
+    if (fs.existsSync(parentReadmePath)) {
+      readmePath = parentReadmePath;
+      console.log(`📁 Using parent directory README: ${readmePath}`);
+    } else if (fs.existsSync(localReadmePath)) {
+      readmePath = localReadmePath;
+      console.log(`📁 Using local directory README: ${readmePath}`);
+    } else {
+      console.error('❌ README.md not found in parent or local directory');
+      process.exit(1);
+    }
+
     const readmeContent = fs.readFileSync(readmePath, 'utf-8');
 
     const titleMatch = readmeContent.match(/^#\s+(.+)$/m);
@@ -133,6 +148,9 @@ export const siteConfig = {
 }
 
 // 如果直接运行此脚本
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  import.meta.url === `file://${process.argv[1]}` ||
+  import.meta.url.endsWith('generate-github-config.js')
+) {
   generateGitHubConfig();
 }

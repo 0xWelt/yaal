@@ -95,12 +95,54 @@ function parseReadme(readmePath) {
       continue;
     }
 
-    // 匹配工具条目
+    // 匹配工具条目 - 支持两种格式：
+    // 1. - [名称](链接) - 描述
+    // 2. #### [名称](链接)
     const toolMatch = line.match(/^-\s+\[([^\]]+)\]\(([^)]+)\)\s*-\s*(.+)$/);
+    const titleToolMatch = line.match(/^####\s+\[([^\]]+)\]\(([^)]+)\)$/);
+
     if (toolMatch && currentCategory) {
       const name = toolMatch[1].trim();
       const url = toolMatch[2].trim();
       const description = toolMatch[3].trim();
+
+      // 提取域名作为来源
+      const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+      const source = domainMatch ? domainMatch[1] : 'Unknown';
+
+      tools.push({
+        name,
+        url,
+        description,
+        category: currentCategory,
+        subcategory: currentSubcategory || '__NO_SUBCATEGORY__',
+        source,
+      });
+    } else if (titleToolMatch && currentCategory) {
+      const name = titleToolMatch[1].trim();
+      const url = titleToolMatch[2].trim();
+
+      // 对于 #### 格式，描述在后续行中（跳过空行）
+      let description = '';
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j].trim();
+        if (
+          nextLine &&
+          !nextLine.startsWith('#') &&
+          !nextLine.startsWith('-')
+        ) {
+          description = nextLine.replace(/^["']|["']$/g, '').trim(); // 移除引号
+          break;
+        }
+        // 如果遇到新的标题或列表项，停止查找
+        if (nextLine.startsWith('#') || nextLine.startsWith('-')) {
+          break;
+        }
+      }
+
+      if (!description) {
+        description = 'No description available';
+      }
 
       // 提取域名作为来源
       const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
@@ -277,6 +319,9 @@ Examples:
 }
 
 // 如果直接运行此脚本
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  import.meta.url === `file://${process.argv[1]}` ||
+  import.meta.url.endsWith('parse-readme.js')
+) {
   main();
 }
