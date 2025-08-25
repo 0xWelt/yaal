@@ -77,10 +77,58 @@ function parseReadme(readmePath) {
       continue;
     }
 
-    // 匹配子分类标题
+    // 匹配子分类标题或直接使用###作为工具
     const subcategoryMatch = line.match(/^###\s+(.+)$/);
     if (subcategoryMatch) {
-      currentSubcategory = subcategoryMatch[1].trim();
+      const subcategoryContent = subcategoryMatch[1].trim();
+
+      // 检查是否是直接工具格式：### [Name](URL)
+      const directToolMatch = subcategoryContent.match(
+        /^\[([^\]]+)\]\(([^)]+)\)$/
+      );
+      if (directToolMatch && currentCategory) {
+        // 这是直接工具，不是子分类
+        const name = directToolMatch[1].trim();
+        const url = directToolMatch[2].trim();
+
+        // 查找描述
+        let description = '';
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j].trim();
+          if (
+            nextLine &&
+            !nextLine.startsWith('#') &&
+            !nextLine.startsWith('-')
+          ) {
+            description = nextLine.replace(/^>\s*/, '').trim();
+            break;
+          }
+          if (nextLine.startsWith('#') || nextLine.startsWith('-')) break;
+        }
+
+        if (!description) {
+          description = 'No description available';
+        }
+
+        // 提取域名作为来源
+        const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+        const source = domainMatch ? domainMatch[1] : 'Unknown';
+
+        tools.push({
+          name,
+          url,
+          description,
+          category: currentCategory,
+          subcategory: currentCategory, // 使用分类名作为子分类
+          source,
+        });
+
+        // 不更新currentSubcategory，因为这不是真正的子分类
+        continue;
+      }
+
+      // 这是正常的子分类
+      currentSubcategory = subcategoryContent;
       // 查找子分类描述（可能在标题后的1-3行内）
       for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
         const descLine = lines[j].trim();
@@ -117,7 +165,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || '__NO_SUBCATEGORY__',
+        subcategory: currentSubcategory || currentCategory,
         source,
       });
     } else if (titleToolMatch && currentCategory) {
@@ -155,7 +203,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || '__NO_SUBCATEGORY__',
+        subcategory: currentSubcategory || currentCategory,
         source,
       });
     }
@@ -187,15 +235,13 @@ function generateCategories(
       };
     }
 
-    const effectiveSubcategory = tool.subcategory || '__NO_SUBCATEGORY__';
+    // 使用工具的子分类，如果没有则使用分类名
+    const effectiveSubcategory = tool.subcategory || tool.category;
     const subcategoryKey = `${tool.category}::${effectiveSubcategory}`;
 
     if (!categories[tool.category].subcategories[effectiveSubcategory]) {
       categories[tool.category].subcategories[effectiveSubcategory] = {
-        name:
-          effectiveSubcategory === '__NO_SUBCATEGORY__'
-            ? tool.category
-            : effectiveSubcategory,
+        name: effectiveSubcategory,
         description: subcategoryDescriptions[subcategoryKey] || '',
         tools: [],
       };
