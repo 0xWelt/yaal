@@ -119,7 +119,7 @@ function parseReadme(readmePath) {
           url,
           description,
           category: currentCategory,
-          subcategory: currentCategory, // 使用分类名作为子分类
+          subcategory: '__dummy__', // 使用dummy子分类，表示没有真正的子分类
           source,
         });
 
@@ -165,7 +165,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || currentCategory,
+        subcategory: currentSubcategory || '__dummy__', // 如果没有子分类，使用dummy
         source,
       });
     } else if (titleToolMatch && currentCategory) {
@@ -203,7 +203,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || currentCategory,
+        subcategory: currentSubcategory || '__dummy__', // 如果没有子分类，使用dummy
         source,
       });
     }
@@ -235,21 +235,31 @@ function generateCategories(
       };
     }
 
-    // 使用工具的子分类，如果没有则使用分类名
+    // 使用工具的子分类，如果是dummy则直接放在分类下
     const effectiveSubcategory = tool.subcategory || tool.category;
-    const subcategoryKey = `${tool.category}::${effectiveSubcategory}`;
 
-    if (!categories[tool.category].subcategories[effectiveSubcategory]) {
-      categories[tool.category].subcategories[effectiveSubcategory] = {
-        name: effectiveSubcategory,
-        description: subcategoryDescriptions[subcategoryKey] || '',
-        tools: [],
-      };
+    if (effectiveSubcategory === '__dummy__') {
+      // 对于dummy子分类，直接放在分类下，不创建子分类
+      if (!categories[tool.category].tools) {
+        categories[tool.category].tools = [];
+      }
+      categories[tool.category].tools.push(tool);
+    } else {
+      // 正常的子分类处理
+      const subcategoryKey = `${tool.category}::${effectiveSubcategory}`;
+
+      if (!categories[tool.category].subcategories[effectiveSubcategory]) {
+        categories[tool.category].subcategories[effectiveSubcategory] = {
+          name: effectiveSubcategory,
+          description: subcategoryDescriptions[subcategoryKey] || '',
+          tools: [],
+        };
+      }
+
+      categories[tool.category].subcategories[effectiveSubcategory].tools.push(
+        tool
+      );
     }
-
-    categories[tool.category].subcategories[effectiveSubcategory].tools.push(
-      tool
-    );
   });
 
   return categories;
@@ -273,22 +283,33 @@ Examples:
   }
 
   try {
-    // 自动查找README文件：先检查父目录，再检查本地目录
-    const parentReadmePath = path.resolve(process.cwd(), '../README.md');
-    const localReadmePath = path.resolve(process.cwd(), 'README.md');
     let readmePath;
 
-    if (fs.existsSync(parentReadmePath)) {
-      readmePath = parentReadmePath;
-      console.log(`📁 Using parent directory README: ${readmePath}`);
-    } else if (fs.existsSync(localReadmePath)) {
-      readmePath = localReadmePath;
-      console.log(`📁 Using local directory README: ${readmePath}`);
+    // 检查是否有命令行参数指定README文件
+    if (process.argv[2] && !process.argv[2].startsWith('-')) {
+      readmePath = path.resolve(process.cwd(), process.argv[2]);
+      if (!fs.existsSync(readmePath)) {
+        console.error(`❌ README file not found: ${readmePath}`);
+        process.exit(1);
+      }
+      console.log(`📁 Using specified README: ${readmePath}`);
     } else {
-      console.error(
-        `❌ README.md not found in parent or local directory. Please create this file.`
-      );
-      process.exit(1);
+      // 自动查找README文件：先检查父目录，再检查本地目录
+      const parentReadmePath = path.resolve(process.cwd(), '../README.md');
+      const localReadmePath = path.resolve(process.cwd(), 'README.md');
+
+      if (fs.existsSync(parentReadmePath)) {
+        readmePath = parentReadmePath;
+        console.log(`📁 Using parent directory README: ${readmePath}`);
+      } else if (fs.existsSync(localReadmePath)) {
+        readmePath = localReadmePath;
+        console.log(`📁 Using local directory README: ${readmePath}`);
+      } else {
+        console.error(
+          `❌ README.md not found in parent or local directory. Please create this file.`
+        );
+        process.exit(1);
+      }
     }
 
     console.log(`Parsing README.md from: ${readmePath}`);
