@@ -119,7 +119,7 @@ function parseReadme(readmePath) {
           url,
           description,
           category: currentCategory,
-          subcategory: '__dummy__', // 使用dummy子分类，表示没有真正的子分类
+          subcategory: '__NO_SUBCATEGORY__', // 使用特殊标记表示没有真正的子分类
           source,
         });
 
@@ -165,7 +165,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || '__dummy__', // 如果没有子分类，使用dummy
+        subcategory: currentSubcategory || '__NO_SUBCATEGORY__', // 如果没有子分类，使用特殊标记
         source,
       });
     } else if (titleToolMatch && currentCategory) {
@@ -203,7 +203,7 @@ function parseReadme(readmePath) {
         url,
         description,
         category: currentCategory,
-        subcategory: currentSubcategory || '__dummy__', // 如果没有子分类，使用dummy
+        subcategory: currentSubcategory || '__NO_SUBCATEGORY__', // 如果没有子分类，使用特殊标记
         source,
       });
     }
@@ -235,11 +235,11 @@ function generateCategories(
       };
     }
 
-    // 使用工具的子分类，如果是dummy则直接放在分类下
+    // 使用工具的子分类，如果是特殊标记则直接放在分类下
     const effectiveSubcategory = tool.subcategory || tool.category;
 
-    if (effectiveSubcategory === '__dummy__') {
-      // 对于dummy子分类，直接放在分类下，不创建子分类
+    if (effectiveSubcategory === '__NO_SUBCATEGORY__') {
+      // 对于没有子分类的情况，直接放在分类下，不创建子分类
       if (!categories[tool.category].tools) {
         categories[tool.category].tools = [];
       }
