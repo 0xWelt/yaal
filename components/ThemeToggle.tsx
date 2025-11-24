@@ -1,29 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
+function getInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'system';
+  const savedTheme = localStorage.getItem('theme') as Theme;
+  return savedTheme || 'system';
+}
+
+function subscribeToMediaQuery(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  mediaQuery.addEventListener('change', callback);
+  return () => mediaQuery.removeEventListener('change', callback);
+}
+
+function getSystemTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system');
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  const systemTheme = useSyncExternalStore(
+    subscribeToMediaQuery,
+    getSystemTheme,
+    () => 'light'
+  );
 
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
+    if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
     const isDark =
-      theme === 'dark' ||
-      (theme === 'system' &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches);
+      theme === 'dark' || (theme === 'system' && systemTheme === 'dark');
 
     if (isDark) {
       root.classList.add('dark');
@@ -36,13 +50,11 @@ export default function ThemeToggle() {
     } else {
       localStorage.removeItem('theme');
     }
-  }, [theme, mounted]);
+  }, [theme, systemTheme]);
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
   };
-
-  if (!mounted) return null;
 
   return (
     <div className="flex items-center space-x-2">
