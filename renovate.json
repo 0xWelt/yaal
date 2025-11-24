@@ -7,5 +7,13 @@
   "internalChecksFilter": "strict",
   "git-submodules": {
     "enabled": true
-  }
+  },
+  "packageRules": [
+    {
+      "description": "Group patch and minor updates together",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dependencies (minor and patch)",
+      "groupSlug": "dependencies-minor-patch"
+    }
+  ]
 }
