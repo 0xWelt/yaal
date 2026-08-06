@@ -53,7 +53,7 @@
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.1.17",
-    "typescript": "^6.0.0"
+    "typescript": "^7.0.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
