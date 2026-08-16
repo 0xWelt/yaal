@@ -5,7 +5,6 @@ import ToolCard from '@/components/ToolCard';
 import SearchBar from '@/components/SearchBar';
 import TopNavPanel from '@/components/TopNavPanel';
 import Header from '@/components/Header';
-import ArchitectureDiagram from '@/components/ArchitectureDiagram';
 import { config } from '@/lib/config';
 import { initializeColorManager } from '@/lib/colorManager';
 
@@ -38,10 +37,6 @@ interface ProjectInfo {
   categoryCount: number;
 }
 
-interface Architecture {
-  mermaid: string;
-}
-
 export default function Home() {
   const [tools, setTools] = useState<Tool[]>([]);
   const [categories, setCategories] = useState<Record<string, CategoryData>>(
@@ -57,7 +52,6 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
-  const [architecture, setArchitecture] = useState<Architecture | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,27 +62,19 @@ export default function Home() {
         const toolsPath = config.runtime.getDataPath('tools.json');
         const categoriesPath = config.runtime.getDataPath('categories.json');
         const projectPath = config.runtime.getDataPath('project.json');
-        const architecturePath =
-          config.runtime.getDataPath('architecture.json');
 
         console.log('Loading data from paths:', {
           toolsPath,
           categoriesPath,
           projectPath,
-          architecturePath,
         });
 
-        const [
-          toolsResponse,
-          categoriesResponse,
-          projectResponse,
-          archResponse,
-        ] = await Promise.all([
-          fetch(toolsPath),
-          fetch(categoriesPath),
-          fetch(projectPath),
-          fetch(architecturePath),
-        ]);
+        const [toolsResponse, categoriesResponse, projectResponse] =
+          await Promise.all([
+            fetch(toolsPath),
+            fetch(categoriesPath),
+            fetch(projectPath),
+          ]);
 
         if (!toolsResponse.ok || !categoriesResponse.ok) {
           throw new Error(
@@ -99,11 +85,6 @@ export default function Home() {
         const toolsData = await toolsResponse.json();
         const categoriesData = await categoriesResponse.json();
         const projectData = await projectResponse.json();
-        // architecture.json is optional (only present when the README has an
-        // Architecture section); a 404 just means no diagram to show.
-        const architectureData = archResponse.ok
-          ? ((await archResponse.json()) as Architecture)
-          : null;
 
         console.log('Loaded tools:', toolsData.length);
         console.log('Loaded categories:', Object.keys(categoriesData).length);
@@ -115,8 +96,14 @@ export default function Home() {
         setTools(toolsData);
         setCategories(categoriesData);
         setProjectInfo(projectData);
-        setArchitecture(architectureData);
         setFilteredTools(toolsData);
+
+        // 从架构页跳转过来时（?category=xxx），自动选中对应分类
+        const params = new URLSearchParams(window.location.search);
+        const categoryParam = params.get('category');
+        if (categoryParam) {
+          setSelectedCategory(categoryParam);
+        }
       } catch (error) {
         console.error('Error loading data:', error);
         // 显示错误信息给用户
@@ -212,42 +199,6 @@ export default function Home() {
       />
 
       <main className="container mx-auto flex-1 px-4 py-8">
-        {/* 架构区域：README 架构图 + 分类总览 */}
-        {architecture && Object.keys(categories).length > 0 && (
-          <section className="mb-10">
-            <ArchitectureDiagram mermaid={architecture.mermaid} />
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.values(categories).map((cat) => {
-                const subTools = Object.values(cat.subcategories).reduce(
-                  (sum, sub) => sum + (sub.tools?.length || 0),
-                  0
-                );
-                const count = subTools + (cat.tools?.length || 0);
-                return (
-                  <button
-                    key={cat.name}
-                    onClick={() => handleTopNavCategorySelect(cat.name)}
-                    className="hover:border-primary-300 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-primary-500"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-900 transition-colors duration-200 dark:text-white">
-                        {cat.name}
-                      </span>
-                      <span className="dark:bg-primary-900/40 dark:text-primary-300 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
-                        {count}
-                      </span>
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-600 transition-colors duration-200 dark:text-gray-400">
-                      {cat.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
         {/* 搜索区域 */}
         <div className="mb-8">
           <SearchBar

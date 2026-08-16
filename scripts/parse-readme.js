@@ -422,7 +422,64 @@ function extractTitleDescription(readmePath) {
   return { title, description };
 }
 
-// Extract the Architecture section (Mermaid diagram) from a README (directory mode).
+// Extract the Architecture section from a README (directory mode). The section is
+// authored as a Mermaid flowchart; we parse it into structured JSON (groups,
+// nodes, edges) so the frontend can render it with custom components instead of
+// the mermaid runtime (better dark mode, responsive, modern styling).
+function parseMermaidFlowchart(source) {
+  const lines = source.split('\n');
+  const groups = [];
+  const nodes = [];
+  const edges = [];
+  let currentGroup = null;
+  const groupStack = [];
+
+  const groupRe = /^\s*subgraph\s+([\w-]+)\["([^"]*)"\]/;
+  const nodeRe = /^\s*([\w-]+)\["([^"]*)"\]/;
+  const edgeRe = /^\s*([\w-]+)\s*(-->|-.->)\s*(?:\|([^|]*)\|)?\s*([\w-]+)/;
+  const endRe = /^\s*end\s*$/;
+  const directionRe = /^\s*direction\s+/;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('flowchart')) continue;
+    if (directionRe.test(line)) continue;
+
+    const g = line.match(groupRe);
+    if (g) {
+      currentGroup = { id: g[1], title: g[2], items: [] };
+      groups.push(currentGroup);
+      groupStack.push(currentGroup);
+      continue;
+    }
+
+    if (endRe.test(line)) {
+      groupStack.pop();
+      currentGroup = groupStack[groupStack.length - 1] || null;
+      continue;
+    }
+
+    const n = line.match(nodeRe);
+    if (n && groupStack.length) {
+      groupStack[groupStack.length - 1].items.push(n[2]);
+      continue;
+    }
+    if (n) {
+      nodes.push({ id: n[1], name: n[2] });
+      continue;
+    }
+
+    const ed = line.match(edgeRe);
+    if (ed) {
+      edges.push({ from: ed[1], to: ed[4], label: ed[3] ? ed[3].trim() : '' });
+      continue;
+    }
+  }
+
+  if (!groups.length && !nodes.length && !edges.length) return null;
+  return { groups, nodes, edges };
+}
+
 function extractArchitecture(readmePath) {
   if (!fs.existsSync(readmePath)) return null;
   const content = fs.readFileSync(readmePath, 'utf8');
@@ -432,7 +489,9 @@ function extractArchitecture(readmePath) {
   if (!archMatch) return null;
   const mermaidMatch = archMatch[1].match(/```mermaid\n([\s\S]*?)```/);
   if (!mermaidMatch) return null;
-  return { mermaid: mermaidMatch[1].trim() };
+  const parsed = parseMermaidFlowchart(mermaidMatch[1]);
+  if (!parsed) return null;
+  return { title: 'Architecture', ...parsed };
 }
 
 // 主函数

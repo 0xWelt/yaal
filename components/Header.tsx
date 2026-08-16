@@ -21,6 +21,31 @@ export default function Header({ title, description }: HeaderProps) {
           </div>
 
           <div className="flex items-center space-x-4">
+            <a
+              href="/architecture"
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+              aria-label="View architecture"
+            >
+              <svg
+                className="size-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 8h6M9 12h6M9 16h4"
+                />
+              </svg>
+              <span className="hidden sm:inline">Architecture</span>
+            </a>
             <ThemeToggle />
             <a
               href={githubConfig.url}
