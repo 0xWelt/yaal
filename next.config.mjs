@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import { load as yamlLoad } from 'js-yaml';
 
 /** @type {import('next').NextConfig} */
 
@@ -25,7 +25,7 @@ function getRepositoryName() {
   }
 
   const configContent = fs.readFileSync(configPath, 'utf8');
-  const config = yaml.load(configContent) || {};
+  const config = yamlLoad(configContent) || {};
 
   if (!config.github) {
     throw new Error(

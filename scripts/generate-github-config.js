@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yaml from 'js-yaml';
+import { load as yamlLoad } from 'js-yaml';
 
 function generateGitHubConfig() {
   // 显示帮助信息
@@ -38,7 +38,7 @@ Examples:
     }
 
     const configContent = fs.readFileSync(configPath, 'utf8');
-    const config = yaml.load(configContent) || {};
+    const config = yamlLoad(configContent) || {};
 
     if (!config.github) {
       console.error(
