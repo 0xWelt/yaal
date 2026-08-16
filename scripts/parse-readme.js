@@ -422,6 +422,19 @@ function extractTitleDescription(readmePath) {
   return { title, description };
 }
 
+// Extract the Architecture section (Mermaid diagram) from a README (directory mode).
+function extractArchitecture(readmePath) {
+  if (!fs.existsSync(readmePath)) return null;
+  const content = fs.readFileSync(readmePath, 'utf8');
+  const archMatch = content.match(
+    /##\s+Architecture\s*\n([\s\S]*?)(?=\n##\s|$)/
+  );
+  if (!archMatch) return null;
+  const mermaidMatch = archMatch[1].match(/```mermaid\n([\s\S]*?)```/);
+  if (!mermaidMatch) return null;
+  return { mermaid: mermaidMatch[1].trim() };
+}
+
 // 主函数
 function main() {
   // 显示帮助信息
@@ -529,6 +542,17 @@ Examples:
       path.join(publicDataDir, 'project.json'),
       JSON.stringify(projectData, null, 2)
     );
+
+    // 写入架构信息（可选：README 有 Architecture 章节时）
+    const architecture = extractArchitecture(readmePath);
+    const architecturePath = path.join(publicDataDir, 'architecture.json');
+    if (architecture) {
+      fs.writeFileSync(architecturePath, JSON.stringify(architecture, null, 2));
+      console.log('📐 Architecture diagram extracted');
+    } else if (fs.existsSync(architecturePath)) {
+      // 不再有 Architecture 章节时移除旧文件
+      fs.rmSync(architecturePath);
+    }
 
     console.log(`Parsing complete! Found ${tools.length} items`);
     console.log(`Categories: ${Object.keys(categories).length}`);
