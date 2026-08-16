@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import matter from 'gray-matter';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -265,6 +266,159 @@ function generateCategories(
   return categories;
 }
 
+// ============ Directory mode (contents/) ============
+// When a `contents/` directory exists next to README.md, parse it instead of
+// the monolithic README. Layout:
+//   contents/<category>/_meta.md          - category metadata (title, description)
+//   contents/<category>/<subcategory>/_meta.md - subcategory metadata
+//   contents/<category>/<subcategory>/<tool>.md - tool entry with YAML frontmatter
+// Tool file frontmatter: name, link, command (optional), category/subcategory (optional).
+
+// Read metadata from a _meta.md file (YAML frontmatter + optional body description).
+function readMeta(filePath, fallbackName) {
+  if (!fs.existsSync(filePath)) {
+    return { title: fallbackName, description: '' };
+  }
+  const { data, content } = matter(fs.readFileSync(filePath, 'utf8'));
+  return {
+    title: data.title || fallbackName,
+    description: (data.description || content || '').trim(),
+  };
+}
+
+// Extract the domain from a URL as the tool source.
+function extractSourceFromUrl(url) {
+  if (!url) return 'Unknown';
+  try {
+    const domainMatch = url.match(/^https?:\/\/([^/]+)/);
+    return domainMatch ? domainMatch[1] : 'Unknown';
+  } catch {
+    return 'Unknown';
+  }
+}
+
+// Parse a single tool markdown file into the standard tool object.
+function parseToolFile(filePath, category, subcategory) {
+  const { data, content } = matter(fs.readFileSync(filePath, 'utf8'));
+  const url = data.link || data.url || '';
+  const name = data.name || path.basename(filePath, '.md');
+  return {
+    name,
+    url,
+    description: (content || '').trim() || data.description || '',
+    category: data.category || category,
+    subcategory: data.subcategory || subcategory || '__NO_SUBCATEGORY__',
+    source: extractSourceFromUrl(url),
+  };
+}
+
+// Scan a contents/ directory tree and build categories + tools.
+function parseContentsDirectory(contentsDir) {
+  const categories = {};
+  const tools = [];
+
+  const categoryDirs = fs
+    .readdirSync(contentsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const catEntry of categoryDirs) {
+    const catDir = path.join(contentsDir, catEntry.name);
+    const catMeta = readMeta(path.join(catDir, '_meta.md'), catEntry.name);
+    const categoryName = catMeta.title;
+    const category = {
+      name: categoryName,
+      description: catMeta.description,
+      subcategories: {},
+    };
+
+    // Subcategory directories
+    const subDirs = fs
+      .readdirSync(catDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const subEntry of subDirs) {
+      const subDir = path.join(catDir, subEntry.name);
+      const subMeta = readMeta(path.join(subDir, '_meta.md'), subEntry.name);
+      const subcategoryName = subMeta.title;
+      const subTools = [];
+
+      const toolFiles = fs
+        .readdirSync(subDir)
+        .filter((f) => f.endsWith('.md') && f !== '_meta.md')
+        .sort();
+
+      for (const f of toolFiles) {
+        const tool = parseToolFile(
+          path.join(subDir, f),
+          categoryName,
+          subcategoryName
+        );
+        subTools.push(tool);
+        tools.push(tool);
+      }
+
+      category.subcategories[subcategoryName] = {
+        name: subcategoryName,
+        description: subMeta.description,
+        tools: subTools,
+      };
+    }
+
+    // Tool files directly under the category (no subcategory)
+    const directTools = fs
+      .readdirSync(catDir)
+      .filter((f) => f.endsWith('.md') && f !== '_meta.md')
+      .sort();
+    if (directTools.length) {
+      category.tools = directTools.map((f) => {
+        const tool = parseToolFile(
+          path.join(catDir, f),
+          categoryName,
+          '__NO_SUBCATEGORY__'
+        );
+        tools.push(tool);
+        return tool;
+      });
+    }
+
+    categories[categoryName] = category;
+  }
+
+  return { categories, tools };
+}
+
+// Extract the # title and first descriptive line from a README (directory mode).
+function extractTitleDescription(readmePath) {
+  const content = fs.readFileSync(readmePath, 'utf8');
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : '';
+
+  let description = '';
+  const lines = content.split(/\r?\n/);
+  let foundTitle = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!foundTitle && t.startsWith('# ')) {
+      foundTitle = true;
+      continue;
+    }
+    if (
+      foundTitle &&
+      t &&
+      !t.startsWith('#') &&
+      !t.startsWith('[') &&
+      !t.startsWith('![') &&
+      !t.startsWith('<')
+    ) {
+      description = t;
+      break;
+    }
+  }
+  return { title, description };
+}
+
 // 主函数
 function main() {
   // 显示帮助信息
@@ -320,18 +474,26 @@ Examples:
       process.exit(1);
     }
 
-    const {
-      title,
-      description,
-      tools,
-      categoryDescriptions,
-      subcategoryDescriptions,
-    } = parseReadme(readmePath);
-    const categories = generateCategories(
-      tools,
-      categoryDescriptions,
-      subcategoryDescriptions
-    );
+    // Detect directory mode: a contents/ directory next to README.md.
+    const contentsDir = path.join(path.dirname(readmePath), 'contents');
+    let title, description, categories, tools;
+
+    if (fs.existsSync(contentsDir)) {
+      console.log(`📁 Directory mode detected: ${contentsDir}`);
+      ({ title, description } = extractTitleDescription(readmePath));
+      ({ categories, tools } = parseContentsDirectory(contentsDir));
+    } else {
+      // Legacy monolithic README mode.
+      const parsed = parseReadme(readmePath);
+      title = parsed.title;
+      description = parsed.description;
+      tools = parsed.tools;
+      categories = generateCategories(
+        parsed.tools,
+        parsed.categoryDescriptions,
+        parsed.subcategoryDescriptions
+      );
+    }
 
     // 创建数据目录 - 只保留public/data，移除重复的data目录
     const publicDataDir = path.join(__dirname, '..', 'public', 'data');
