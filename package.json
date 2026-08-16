@@ -37,7 +37,7 @@
     "js-yaml": "^4.1.1",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.1.17",
-    "typescript": "^6.0.0",
+    "typescript": "^7.0.0",
     "vite-plus": "^0.2.9"
   },
   "devEngines": {
