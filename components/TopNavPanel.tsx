@@ -75,7 +75,7 @@ export default function TopNavPanel({
           {(selectedCategory || selectedSubcategory) && (
             <button
               onClick={onClearSelection}
-              className="dark:text-primary-400 dark:hover:text-primary-300 text-primary-600 hover:text-primary-700 ml-4 flex-shrink-0 text-sm"
+              className="dark:text-primary-400 dark:hover:text-primary-300 ml-4 flex-shrink-0 text-sm text-primary-600 hover:text-primary-700"
             >
               Clear All
             </button>

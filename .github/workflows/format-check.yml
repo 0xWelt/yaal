@@ -14,26 +14,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.17.0
         with:
           node-version: '24'
-          cache: 'npm'
+          cache: true
+          run-install: false
 
       - name: Install dependencies
-        run: npm ci
+        run: vp install --frozen-lockfile
 
       - name: Generate configuration
-        run: node scripts/generate-github-config.js
+        run: vp node scripts/generate-github-config.js
 
-      - name: Check code formatting
-        run: npm run format:check
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Type check
-        run: npm run type-check
+      - name: Check format, lint, and types
+        run: vp check
 
       - name: Validate README parsing
-        run: npm run parse-readme
+        run: vp run parse-readme

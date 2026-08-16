@@ -34,7 +34,7 @@ function getRepositoryName() {
   }
 
   const url = config.github;
-  const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
 
   if (!match) {
     throw new Error(

@@ -58,7 +58,7 @@ export default function ToolCard({
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="dark:hover:text-primary-400 hover:text-primary-600 line-clamp-2 text-xl font-bold text-gray-900 transition-colors duration-200 dark:text-white"
+            className="dark:hover:text-primary-400 line-clamp-2 text-xl font-bold text-gray-900 transition-colors duration-200 hover:text-primary-600 dark:text-white"
           >
             {tool.name}
           </a>
@@ -77,7 +77,7 @@ export default function ToolCard({
             >
               {tool.description}
               {!isExpanded && tool.description.length > 80 && (
-                <span className="dark:text-primary-400 text-primary-600 ml-1 font-medium">
+                <span className="dark:text-primary-400 ml-1 font-medium text-primary-600">
                   ...
                 </span>
               )}

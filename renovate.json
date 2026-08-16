@@ -6,15 +6,19 @@
   "automergeType": "pr",
   "platformAutomerge": true,
   "internalChecksFilter": "strict",
-  "git-submodules": {
-    "enabled": true
-  },
   "packageRules": [
     {
       "description": "Group patch and minor updates together",
       "matchUpdateTypes": ["minor", "patch"],
+      "excludePackageNames": ["vite-plus"],
       "groupName": "dependencies (minor and patch)",
       "groupSlug": "dependencies-minor-patch"
+    },
+    {
+      "description": "vite-plus is the core toolchain; require manual review",
+      "matchPackageNames": ["vite-plus"],
+      "automerge": false,
+      "groupName": null
     }
   ]
 }

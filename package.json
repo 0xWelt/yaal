@@ -2,28 +2,22 @@
   "name": "yaal",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "homepage": "https://0xWelt.github.io/yaal/",
+  "bugs": {
+    "url": "https://github.com/0xWelt/yaal/issues"
+  },
   "author": "0xWelt",
   "repository": {
     "type": "git",
     "url": "https://github.com/0xWelt/yaal"
   },
-  "bugs": {
-    "url": "https://github.com/0xWelt/yaal/issues"
-  },
-  "homepage": "https://0xWelt.github.io/yaal/",
+  "type": "module",
   "scripts": {
     "dev": "node scripts/generate-github-config.js && node scripts/parse-readme.js && next dev",
     "build": "node scripts/generate-github-config.js && node scripts/parse-readme.js && next build",
     "start": "next start",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "type-check": "tsc --noEmit",
     "parse-readme": "node scripts/parse-readme.js",
-    "prepare": "husky install",
-    "pre-commit": "lint-staged"
+    "prepare": "vp config"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
@@ -34,34 +28,23 @@
     "remark-html": "^16.0.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/parser": "^8.47.0",
     "autoprefixer": "^10.4.22",
-    "eslint": "^9.39.1",
-    "eslint-config-next": "^16.0.3",
-    "eslint-config-prettier": "^10.1.8",
-    "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
-    "lint-staged": "^17.0.0",
     "postcss": "^8.5.1",
-    "prettier": "^3.3.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4.1.17",
-    "typescript": "^6.0.0"
+    "typescript": "^6.0.0",
+    "vite-plus": "^0.2.9"
   },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,mdx,css,yml,yaml}": [
-      "prettier --write"
-    ]
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": "12.0.2",
+      "onFail": "download"
+    }
   }
 }

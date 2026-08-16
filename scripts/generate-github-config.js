@@ -48,7 +48,7 @@ Examples:
     }
 
     const url = config.github;
-    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
 
     if (!match) {
       console.error(

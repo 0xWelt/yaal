@@ -114,7 +114,7 @@ export default function Home() {
       }
     };
 
-    loadData();
+    void loadData();
   }, []);
 
   useEffect(() => {
@@ -168,7 +168,7 @@ export default function Home() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 transition-colors duration-200 dark:bg-gray-900">
         <div className="text-center">
-          <div className="dark:border-primary-400 border-primary-600 mx-auto size-12 animate-spin rounded-full border-b-2"></div>
+          <div className="dark:border-primary-400 mx-auto size-12 animate-spin rounded-full border-b-2 border-primary-600"></div>
           <p className="mt-4 text-gray-600 transition-colors duration-200 dark:text-gray-300">
             Loading project data...
           </p>
@@ -246,7 +246,7 @@ export default function Home() {
             href="https://github.com/0xWelt/yaal"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium underline transition-colors duration-200"
+            className="dark:text-primary-400 dark:hover:text-primary-300 font-medium text-primary-600 underline transition-colors duration-200 hover:text-primary-700"
           >
             0xWelt/yaal
           </a>

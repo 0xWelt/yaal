@@ -111,7 +111,7 @@ function parseReadme(readmePath) {
         }
 
         // 提取域名作为来源
-        const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+        const domainMatch = url.match(/^https?:\/\/([^/]+)/);
         const source = domainMatch ? domainMatch[1] : 'Unknown';
 
         tools.push({
@@ -157,7 +157,7 @@ function parseReadme(readmePath) {
       const description = toolMatch[3].trim();
 
       // 提取域名作为来源
-      const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+      const domainMatch = url.match(/^https?:\/\/([^/]+)/);
       const source = domainMatch ? domainMatch[1] : 'Unknown';
 
       tools.push({
@@ -195,7 +195,7 @@ function parseReadme(readmePath) {
       }
 
       // 提取域名作为来源
-      const domainMatch = url.match(/^https?:\/\/([^\/]+)/);
+      const domainMatch = url.match(/^https?:\/\/([^/]+)/);
       const source = domainMatch ? domainMatch[1] : 'Unknown';
 
       tools.push({
