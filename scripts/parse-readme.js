@@ -309,6 +309,9 @@ function parseToolFile(filePath, category, subcategory) {
     category: data.category || category,
     subcategory: data.subcategory || subcategory || '__NO_SUBCATEGORY__',
     source: extractSourceFromUrl(url),
+    // Optional cross-category dimensions: a tool may be, e.g., a platform CLI
+    // that also ships agent skills (tags: [agent-skills]) or an MCP server.
+    ...(Array.isArray(data.tags) ? { tags: data.tags } : {}),
   };
 }
 
@@ -534,11 +537,12 @@ Examples:
 
     Object.keys(categories).forEach((category) => {
       const subcategories = Object.keys(categories[category].subcategories);
-      const totalTools = subcategories.reduce(
-        (sum, sub) =>
-          sum + categories[category].subcategories[sub].tools.length,
-        0
-      );
+      const totalTools =
+        subcategories.reduce(
+          (sum, sub) =>
+            sum + categories[category].subcategories[sub].tools.length,
+          0
+        ) + (categories[category].tools || []).length;
       console.log(
         `- ${category}: ${subcategories.length} subcategories, ${totalTools} items`
       );
