@@ -35,7 +35,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.22",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^5.0.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.1.17",
     "typescript": "^7.0.0",
