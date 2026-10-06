@@ -10,15 +10,16 @@
     {
       "description": "Group patch and minor updates together",
       "matchUpdateTypes": ["minor", "patch"],
-      "excludePackageNames": ["vite-plus"],
+      "excludePackageNames": ["vite-plus", "@voidzero-dev/vite-plus-core"],
       "groupName": "dependencies (minor and patch)",
       "groupSlug": "dependencies-minor-patch"
     },
     {
-      "description": "vite-plus is the core toolchain; require manual review",
-      "matchPackageNames": ["vite-plus"],
+      "description": "vite-plus is the core toolchain; keep vite-plus and its pinned vite override (vite-plus-core) in lockstep and require manual review",
+      "matchPackageNames": ["vite-plus", "@voidzero-dev/vite-plus-core"],
       "automerge": false,
-      "groupName": null
+      "groupName": "vite-plus",
+      "groupSlug": "vite-plus"
     }
   ]
 }
