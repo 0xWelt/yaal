@@ -10,7 +10,7 @@
     {
       "description": "Group patch and minor updates together",
       "matchUpdateTypes": ["minor", "patch"],
-      "excludePackageNames": ["vite-plus", "@voidzero-dev/vite-plus-core"],
+      "matchPackageNames": ["!/^(vite-plus|@voidzero-dev\\/vite-plus-core)$/"],
       "groupName": "dependencies (minor and patch)",
       "groupSlug": "dependencies-minor-patch"
     },
