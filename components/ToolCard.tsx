@@ -8,6 +8,7 @@ interface Tool {
   description: string;
   category: string;
   subcategory: string;
+  command?: string;
 }
 
 interface ToolCardProps {
@@ -22,6 +23,18 @@ export default function ToolCard({
   onSubcategoryChange,
 }: ToolCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyCommand = async () => {
+    if (!tool.command) return;
+    try {
+      await navigator.clipboard.writeText(tool.command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard may be unavailable (e.g. insecure context); ignore.
+    }
+  };
 
   const getSubcategoryColor = (category: string, subcategory: string) => {
     if (subcategory === '__NO_SUBCATEGORY__') {
@@ -84,6 +97,27 @@ export default function ToolCard({
             </div>
           </div>
         </div>
+
+        {/* 命令 */}
+        {tool.command && (
+          <div className="mb-4 flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900">
+            <code className="flex-1 truncate font-mono text-xs text-gray-700 dark:text-gray-200">
+              <span className="text-gray-400 select-none dark:text-gray-500">
+                ${' '}
+              </span>
+              {tool.command}
+            </code>
+            <button
+              type="button"
+              onClick={copyCommand}
+              aria-label={`Copy command: ${tool.command}`}
+              title={copied ? 'Copied!' : 'Copy command'}
+              className="dark:hover:text-primary-400 flex-shrink-0 text-xs font-medium text-gray-500 transition-colors duration-200 hover:text-primary-600 dark:text-gray-400"
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+        )}
 
         {/* 分类标签 */}
         <div className="flex flex-wrap gap-1.5">

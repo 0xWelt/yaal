@@ -312,6 +312,10 @@ function parseToolFile(filePath, category, subcategory) {
     // Optional cross-category dimensions: a tool may be, e.g., a platform CLI
     // that also ships agent skills (tags: [agent-skills]) or an MCP server.
     ...(Array.isArray(data.tags) ? { tags: data.tags } : {}),
+    // Optional shell command used to launch / install the tool.
+    ...(typeof data.command === 'string' && data.command.trim()
+      ? { command: data.command.trim() }
+      : {}),
   };
 }
 
