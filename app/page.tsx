@@ -14,6 +14,7 @@ interface Tool {
   description: string;
   category: string;
   subcategory: string;
+  tags?: string[];
 }
 
 interface CategoryData {
@@ -131,12 +132,14 @@ export default function Home() {
 
     // 按搜索词过滤
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (tool) =>
-          tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tool.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tool.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          tool.subcategory.toLowerCase().includes(searchTerm.toLowerCase())
+          tool.name.toLowerCase().includes(term) ||
+          tool.description.toLowerCase().includes(term) ||
+          tool.category.toLowerCase().includes(term) ||
+          tool.subcategory.toLowerCase().includes(term) ||
+          (tool.tags ?? []).some((tag) => tag.toLowerCase().includes(term))
       );
     }
 
