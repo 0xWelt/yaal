@@ -106,13 +106,25 @@ Examples:
       description = 'A curated list of awesome resources';
     }
 
+    // "Submit a tool" target: the instance's CONTRIBUTING.md when it exists
+    // next to the config, otherwise the repository's pull request list.
+    const repoUrl = `https://github.com/${owner}/${repo}`;
+    const hasContributing = fs.existsSync(
+      path.join(path.dirname(configPath), 'CONTRIBUTING.md')
+    );
+    const submitUrl = hasContributing
+      ? `${repoUrl}/blob/HEAD/CONTRIBUTING.md`
+      : `${repoUrl}/pulls`;
+
     // 生成 GitHub 配置文件
     const githubConfig = {
       repository: `${owner}/${repo}`,
-      url: `https://github.com/${owner}/${repo}`,
+      url: repoUrl,
       repositoryName: repositoryName,
       owner: owner,
       repo: repo,
+      submitUrl,
+      buildTime: new Date().toISOString(),
     };
 
     // 写入配置文件

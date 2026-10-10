@@ -7,6 +7,9 @@ import TopNavPanel from '@/components/TopNavPanel';
 import Header from '@/components/Header';
 import { config } from '@/lib/config';
 import { initializeColorManager } from '@/lib/colorManager';
+import { githubConfig } from '@/lib/githubConfig';
+
+const lastUpdated = new Date(githubConfig.buildTime).toISOString().slice(0, 10);
 
 interface Tool {
   name: string;
@@ -261,6 +264,19 @@ export default function Home() {
           >
             0xWelt/yaal
           </a>
+          {' · '}
+          <a
+            href={githubConfig.submitUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="dark:text-primary-400 dark:hover:text-primary-300 font-medium text-primary-600 underline transition-colors duration-200 hover:text-primary-700"
+          >
+            Submit a tool
+          </a>
+          {' · '}
+          <time dateTime={githubConfig.buildTime}>
+            Last updated {lastUpdated}
+          </time>
         </p>
       </footer>
     </div>
