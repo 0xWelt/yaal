@@ -14,22 +14,32 @@ interface TopNavPanelProps {
       >;
     }
   >;
-  selectedCategory: string;
+  selectedCategories: string[];
   selectedSubcategory: string;
-  onCategorySelect: (_category: string) => void;
+  tags: string[];
+  selectedTags: string[];
+  onCategoryToggle: (_category: string) => void;
   onSubcategorySelect: (_subcategory: string) => void;
+  onTagToggle: (_tag: string) => void;
   onClearSelection: () => void;
 }
 
 export default function TopNavPanel({
   categories,
-  selectedCategory,
+  selectedCategories,
   selectedSubcategory,
-  onCategorySelect,
+  tags,
+  selectedTags,
+  onCategoryToggle,
   onSubcategorySelect,
+  onTagToggle,
   onClearSelection,
 }: TopNavPanelProps) {
   const categoryKeys = Object.keys(categories);
+  // Subcategories are shown only when exactly one category is selected.
+  const selectedCategory =
+    selectedCategories.length === 1 ? selectedCategories[0] : '';
+  const hasSelection = selectedCategories.length > 0 || selectedTags.length > 0;
 
   return (
     <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm transition-colors duration-200 dark:bg-gray-900/95">
@@ -40,7 +50,7 @@ export default function TopNavPanel({
             <button
               onClick={onClearSelection}
               className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
-                !selectedCategory
+                selectedCategories.length === 0
                   ? 'bg-primary-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
@@ -51,9 +61,10 @@ export default function TopNavPanel({
             {categoryKeys.map((category) => (
               <div key={category} className="group relative">
                 <button
-                  onClick={() => onCategorySelect(category)}
+                  onClick={() => onCategoryToggle(category)}
+                  aria-pressed={selectedCategories.includes(category)}
                   className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
-                    selectedCategory === category
+                    selectedCategories.includes(category)
                       ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -72,7 +83,7 @@ export default function TopNavPanel({
             ))}
           </div>
 
-          {(selectedCategory || selectedSubcategory) && (
+          {hasSelection && (
             <button
               onClick={onClearSelection}
               className="dark:text-primary-400 dark:hover:text-primary-300 ml-4 flex-shrink-0 text-sm text-primary-600 hover:text-primary-700"
@@ -81,6 +92,29 @@ export default function TopNavPanel({
             </button>
           )}
         </div>
+
+        {/* Tags (multi-select) */}
+        {tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 pt-2">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+              Tags
+            </span>
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => onTagToggle(tag)}
+                aria-pressed={selectedTags.includes(tag)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
+                  selectedTags.includes(tag)
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Subcategories */}
         {selectedCategory &&
