@@ -272,7 +272,7 @@ function generateCategories(
 //   contents/<category>/_meta.md          - category metadata (title, description)
 //   contents/<category>/<subcategory>/_meta.md - subcategory metadata
 //   contents/<category>/<subcategory>/<tool>.md - tool entry with YAML frontmatter
-// Tool file frontmatter: name, link, command (optional), category/subcategory (optional).
+// Tool file frontmatter: name, link, category/subcategory (optional).
 
 // Read metadata from a _meta.md file (YAML frontmatter + optional body description).
 function readMeta(filePath, fallbackName) {
