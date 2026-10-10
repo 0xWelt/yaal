@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ToolCard from '@/components/ToolCard';
 import SearchBar from '@/components/SearchBar';
 import TopNavPanel from '@/components/TopNavPanel';
@@ -54,9 +54,19 @@ export default function Home() {
   });
   const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Subcategory filtering only makes sense with exactly one category selected.
+  const singleCategory =
+    selectedCategories.length === 1 ? selectedCategories[0] : '';
+
+  const allTags = useMemo(
+    () => Array.from(new Set(tools.flatMap((tool) => tool.tags ?? []))).sort(),
+    [tools]
+  );
 
   useEffect(() => {
     // 加载数据 - 使用统一配置
@@ -102,12 +112,17 @@ export default function Home() {
         setProjectInfo(projectData);
         setFilteredTools(toolsData);
 
-        // 从架构页跳转过来时（?category=xxx），自动选中对应分类
+        // Restore filters from the URL (?category=a&category=b&subcategory=x&tag=t).
+        // The architecture page links here with a single ?category=xxx.
         const params = new URLSearchParams(window.location.search);
-        const categoryParam = params.get('category');
-        if (categoryParam) {
-          setSelectedCategory(categoryParam);
+        const categoryParams = params
+          .getAll('category')
+          .filter((c) => c in categoriesData);
+        setSelectedCategories(categoryParams);
+        if (categoryParams.length === 1) {
+          setSelectedSubcategory(params.get('subcategory') ?? '');
         }
+        setSelectedTags(params.getAll('tag'));
       } catch (error) {
         console.error('Error loading data:', error);
         // 显示错误信息给用户
@@ -146,26 +161,68 @@ export default function Home() {
       );
     }
 
-    // 按分类过滤
-    if (selectedCategory) {
-      filtered = filtered.filter((tool) => tool.category === selectedCategory);
+    // Categories: OR within the selection
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((tool) =>
+        selectedCategories.includes(tool.category)
+      );
     }
 
-    // 按子分类过滤
-    if (selectedSubcategory) {
+    // Subcategory (only with a single category selected)
+    if (singleCategory && selectedSubcategory) {
       filtered = filtered.filter(
         (tool) => tool.subcategory === selectedSubcategory
       );
-    } else if (selectedCategory) {
-      // 如果选择了分类但没有选择子分类，包含该分类下所有工具
-      filtered = filtered.filter((tool) => tool.category === selectedCategory);
+    }
+
+    // Tags: OR within the selection, AND with the category filter
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((tool) =>
+        (tool.tags ?? []).some((tag) => selectedTags.includes(tag))
+      );
     }
 
     setFilteredTools(filtered);
-  }, [tools, searchTerm, selectedCategory, selectedSubcategory]);
+  }, [
+    tools,
+    searchTerm,
+    selectedCategories,
+    singleCategory,
+    selectedSubcategory,
+    selectedTags,
+  ]);
 
-  const handleTopNavCategorySelect = (category: string) => {
-    setSelectedCategory(category);
+  // Keep the URL in sync so filtered views can be shared / reloaded.
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams();
+    selectedCategories.forEach((c) => params.append('category', c));
+    if (singleCategory && selectedSubcategory) {
+      params.set('subcategory', selectedSubcategory);
+    }
+    selectedTags.forEach((t) => params.append('tag', t));
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', url);
+  }, [
+    loading,
+    selectedCategories,
+    singleCategory,
+    selectedSubcategory,
+    selectedTags,
+  ]);
+
+  const toggle = (list: string[], value: string) =>
+    list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+
+  const handleCategoryToggle = (category: string) => {
+    setSelectedCategories((prev) => toggle(prev, category));
+    setSelectedSubcategory('');
+  };
+
+  // Clicking a category badge on a card focuses that single category.
+  const handleCategoryFocus = (category: string) => {
+    setSelectedCategories([category]);
     setSelectedSubcategory('');
   };
 
@@ -173,9 +230,14 @@ export default function Home() {
     setSelectedSubcategory(subcategory);
   };
 
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags((prev) => toggle(prev, tag));
+  };
+
   const handleClearTopNavSelection = () => {
-    setSelectedCategory('');
+    setSelectedCategories([]);
     setSelectedSubcategory('');
+    setSelectedTags([]);
   };
 
   if (loading) {
@@ -197,10 +259,13 @@ export default function Home() {
 
       <TopNavPanel
         categories={categories}
-        selectedCategory={selectedCategory}
+        selectedCategories={selectedCategories}
         selectedSubcategory={selectedSubcategory}
-        onCategorySelect={handleTopNavCategorySelect}
+        tags={allTags}
+        selectedTags={selectedTags}
+        onCategoryToggle={handleCategoryToggle}
         onSubcategorySelect={handleTopNavSubcategorySelect}
+        onTagToggle={handleTagToggle}
         onClearSelection={handleClearTopNavSelection}
       />
 
@@ -213,13 +278,20 @@ export default function Home() {
             placeholder="Search tools, descriptions, or tags..."
           />
 
-          {(searchTerm || selectedCategory || selectedSubcategory) && (
+          {(searchTerm ||
+            selectedCategories.length > 0 ||
+            selectedTags.length > 0) && (
             <div className="mt-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Showing {filteredTools.length} of {tools.length} items
                 {searchTerm && ` for "${searchTerm}"`}
-                {selectedCategory && ` in ${selectedCategory}`}
-                {selectedSubcategory && ` > ${selectedSubcategory}`}
+                {selectedCategories.length > 0 &&
+                  ` in ${selectedCategories.join(', ')}`}
+                {singleCategory &&
+                  selectedSubcategory &&
+                  ` > ${selectedSubcategory}`}
+                {selectedTags.length > 0 &&
+                  ` tagged ${selectedTags.join(', ')}`}
               </p>
             </div>
           )}
@@ -232,7 +304,7 @@ export default function Home() {
               <ToolCard
                 key={`${tool.name}-${index}`}
                 tool={tool}
-                onCategoryChange={handleTopNavCategorySelect}
+                onCategoryChange={handleCategoryFocus}
                 onSubcategoryChange={handleTopNavSubcategorySelect}
               />
             ))}
