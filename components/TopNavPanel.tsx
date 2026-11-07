@@ -44,9 +44,9 @@ export default function TopNavPanel({
   return (
     <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm transition-colors duration-200 dark:bg-gray-900/95">
       <div className="container mx-auto px-4 py-3">
-        {/* Primary Categories */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        {/* Primary Categories — wrap so chips stay reachable on narrow widths */}
+        <div className="flex items-start gap-4">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <button
               onClick={onClearSelection}
               className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
@@ -59,7 +59,7 @@ export default function TopNavPanel({
             </button>
 
             {categoryKeys.map((category) => (
-              <div key={category} className="group relative">
+              <div key={category} className="group relative hover:z-20">
                 <button
                   onClick={() => onCategoryToggle(category)}
                   aria-pressed={selectedCategories.includes(category)}
@@ -72,8 +72,8 @@ export default function TopNavPanel({
                   {category}
                 </button>
                 {categories[category]?.description && (
-                  <div className="pointer-events-none invisible absolute top-full left-1/2 z-[100] mt-2 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                    <div className="w-80 max-w-md rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
+                  <div className="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 hidden w-max max-w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 group-hover:block">
+                    <div className="w-80 max-w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
                       {categories[category].description}
                       <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-t border-l border-gray-700 bg-gray-900"></div>
                     </div>
@@ -86,7 +86,7 @@ export default function TopNavPanel({
           {hasSelection && (
             <button
               onClick={onClearSelection}
-              className="dark:text-primary-400 dark:hover:text-primary-300 ml-4 flex-shrink-0 text-sm text-primary-600 hover:text-primary-700"
+              className="dark:text-primary-400 dark:hover:text-primary-300 shrink-0 self-start pt-2 text-sm text-primary-600 hover:text-primary-700"
             >
               Clear All
             </button>
@@ -127,7 +127,7 @@ export default function TopNavPanel({
             if (validSubcategories.length === 0) return null;
 
             return (
-              <div className="mt-2 flex items-center space-x-2 pt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2 pt-2">
                 <button
                   onClick={() => onSubcategorySelect('')}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
@@ -139,7 +139,7 @@ export default function TopNavPanel({
                   All
                 </button>
                 {validSubcategories.map((subcategory) => (
-                  <div key={subcategory} className="group relative">
+                  <div key={subcategory} className="group relative hover:z-20">
                     <button
                       onClick={() => onSubcategorySelect(subcategory)}
                       className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
@@ -151,8 +151,8 @@ export default function TopNavPanel({
                       {subcategory}
                     </button>
                     {subcategories[subcategory]?.description && (
-                      <div className="pointer-events-none invisible absolute top-full left-1/2 z-[100] mt-2 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                        <div className="w-72 max-w-sm rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
+                      <div className="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 hidden w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 group-hover:block">
+                        <div className="w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
                           {subcategories[subcategory].description}
                           <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-t border-l border-gray-700 bg-gray-900"></div>
                         </div>

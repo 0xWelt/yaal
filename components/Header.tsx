@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ThemeToggle from './ThemeToggle';
 import { githubConfig } from '@/lib/githubConfig';
 
@@ -10,8 +11,8 @@ export default function Header({ title, description }: HeaderProps) {
   return (
     <header className="border-b border-gray-200 bg-white shadow-sm transition-colors duration-200 dark:border-gray-700 dark:bg-gray-800">
       <div className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <div className="max-w-full min-w-0">
             <h1 className="text-3xl font-bold text-gray-900 transition-colors duration-200 dark:text-white">
               {title}
             </h1>
@@ -20,7 +21,7 @@ export default function Header({ title, description }: HeaderProps) {
             </p>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <a
               href={githubConfig.submitUrl}
               target="_blank"
@@ -43,7 +44,7 @@ export default function Header({ title, description }: HeaderProps) {
               </svg>
               <span className="hidden sm:inline">Submit a tool</span>
             </a>
-            <a
+            <Link
               href="/architecture"
               className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-700"
               aria-label="View architecture"
@@ -67,7 +68,7 @@ export default function Header({ title, description }: HeaderProps) {
                 />
               </svg>
               <span className="hidden sm:inline">Architecture</span>
-            </a>
+            </Link>
             <ThemeToggle />
             <a
               href={githubConfig.url}
