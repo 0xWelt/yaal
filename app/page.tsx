@@ -18,6 +18,7 @@ interface Tool {
   category: string;
   subcategory: string;
   tags?: string[];
+  image?: string;
 }
 
 interface CategoryData {

@@ -43,6 +43,7 @@ export default function GitHubCorner({
           border: 0,
           right: 0,
         }}
+        className="z-10"
         aria-hidden="true"
       >
         <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
