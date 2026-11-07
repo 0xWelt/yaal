@@ -69,6 +69,14 @@ Supported entry formats:
 1. `#### [Name](link)` — put the description on the following non-empty, non-heading line.
 2. `- [Name](link) - inline description`
 
+An optional official preview can follow the description, before the next heading or list item. Use an HTML comment so the README renderer stays unchanged:
+
+```html
+<!-- image: https://example.com/preview.png -->
+```
+
+`image` is not required. It must be an absolute `https` URL of the product's official preview image (typically the page's Open Graph image). Do not commit an image binary, and do not use an unofficial screenshot. A bare `image: https://...` line is accepted too. Badges and other images are ignored.
+
 Keep translated copies (such as `README.es-ES.md`) in sync with the main README.
 
 ### Directory mode (`contents/`)
@@ -88,9 +96,12 @@ Tool file frontmatter:
 ---
 name: Tool Name
 link: https://example.com
+image: https://example.com/preview.png # optional
 ---
 Tool description paragraph.
 ```
+
+`image` is not required. When present, it must be an absolute `https` URL of the product's official preview image (typically the page's Open Graph image). Do not commit an image binary, and do not use an unofficial screenshot. If `image` is absent, it is omitted from the generated data.
 
 `category` / `subcategory` may also be set in frontmatter to override path inference; otherwise they come from the directory path.
 

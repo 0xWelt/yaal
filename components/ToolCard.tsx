@@ -8,6 +8,7 @@ interface Tool {
   description: string;
   category: string;
   subcategory: string;
+  image?: string;
 }
 
 interface ToolCardProps {
@@ -22,6 +23,9 @@ export default function ToolCard({
   onSubcategoryChange,
 }: ToolCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const [loadedImage, setLoadedImage] = useState<string | null>(null);
+  const showImage = Boolean(tool.image) && failedImage !== tool.image;
 
   const getSubcategoryColor = (category: string, subcategory: string) => {
     if (subcategory === '__NO_SUBCATEGORY__') {
@@ -47,11 +51,26 @@ export default function ToolCard({
   };
 
   return (
-    <div className="card relative flex h-full flex-col p-6">
+    <div
+      className={`card relative flex h-full flex-col ${showImage ? 'overflow-hidden' : ''}`}
+    >
       {/* GitHub Corner */}
       <GitHubCorner url={tool.url} />
 
-      <div className="flex-1">
+      {showImage && (
+        <img
+          src={tool.image}
+          alt=""
+          loading="lazy"
+          onLoad={() => setLoadedImage(tool.image ?? null)}
+          onError={() => setFailedImage(tool.image ?? null)}
+          className={`aspect-video w-full object-cover ${
+            loadedImage === tool.image ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      )}
+
+      <div className="flex-1 p-6">
         {/* 标题和链接 */}
         <div className="mb-4">
           <a

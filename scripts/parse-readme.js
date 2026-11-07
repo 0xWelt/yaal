@@ -101,6 +101,8 @@ function parseReadme(readmePath) {
             !nextLine.startsWith('#') &&
             !nextLine.startsWith('-')
           ) {
+            // Preview directives are metadata, not the description.
+            if (imageDirectiveToken(nextLine)) continue;
             description = nextLine.replace(/^>\s*/, '').trim();
             break;
           }
@@ -122,6 +124,7 @@ function parseReadme(readmePath) {
           category: currentCategory,
           subcategory: '__NO_SUBCATEGORY__', // 使用特殊标记表示没有真正的子分类
           source,
+          ...imageProps(readmeImage(lines, i + 1)),
         });
 
         // 不更新currentSubcategory，因为这不是真正的子分类
@@ -168,6 +171,7 @@ function parseReadme(readmePath) {
         category: currentCategory,
         subcategory: currentSubcategory || '__NO_SUBCATEGORY__', // 如果没有子分类，使用特殊标记
         source,
+        ...imageProps(readmeImage(lines, i + 1)),
       });
     } else if (titleToolMatch && currentCategory) {
       const name = titleToolMatch[1].trim();
@@ -182,6 +186,8 @@ function parseReadme(readmePath) {
           !nextLine.startsWith('#') &&
           !nextLine.startsWith('-')
         ) {
+          // Preview directives are metadata, not the description.
+          if (imageDirectiveToken(nextLine)) continue;
           description = nextLine.replace(/^["']|["']$/g, '').trim(); // 移除引号
           break;
         }
@@ -206,6 +212,7 @@ function parseReadme(readmePath) {
         category: currentCategory,
         subcategory: currentSubcategory || '__NO_SUBCATEGORY__', // 如果没有子分类，使用特殊标记
         source,
+        ...imageProps(readmeImage(lines, i + 1)),
       });
     }
   }
@@ -272,7 +279,8 @@ function generateCategories(
 //   contents/<category>/_meta.md          - category metadata (title, description)
 //   contents/<category>/<subcategory>/_meta.md - subcategory metadata
 //   contents/<category>/<subcategory>/<tool>.md - tool entry with YAML frontmatter
-// Tool file frontmatter: name, link, category/subcategory (optional).
+// Tool file frontmatter: name, link, optional image (absolute https URL),
+// category/subcategory (optional). `image` is omitted when absent or invalid.
 
 // Read metadata from a _meta.md file (YAML frontmatter + optional body description).
 function readMeta(filePath, fallbackName) {
@@ -297,6 +305,51 @@ function extractSourceFromUrl(url) {
   }
 }
 
+// Optional official preview (typically an og:image). Only absolute https URLs
+// are kept. Missing, relative, or non-https values are omitted — never invented.
+function officialPreviewImage(value) {
+  if (typeof value !== 'string') return undefined;
+  const url = value.trim().replace(/^["']|["']$/g, '');
+  if (!/^https:\/\/\S+$/.test(url)) return undefined;
+  try {
+    if (new URL(url).protocol !== 'https:') return undefined;
+    return url;
+  } catch {
+    return undefined;
+  }
+}
+
+function imageProps(value) {
+  const image = officialPreviewImage(value);
+  return image ? { image } : {};
+}
+
+// README mode only. A preview is an explicit directive inside the tool entry,
+// never a nearby badge or screenshot:
+//   image: https://example.com/preview.png
+//   <!-- image: https://example.com/preview.png -->
+// Scanning stops at the next heading or list item so other entries are untouched.
+function imageDirectiveToken(line) {
+  const comment = line.match(/^<!--\s*image:\s*(\S+)\s*-->$/i);
+  if (comment) return comment[1];
+  const plain = line.match(/^image:\s*(\S+)\s*$/i);
+  if (plain) return plain[1];
+  return undefined;
+}
+
+function readmeImage(lines, startIndex) {
+  for (let j = startIndex; j < lines.length; j++) {
+    const nextLine = lines[j].trim();
+    if (!nextLine) continue;
+    if (nextLine.startsWith('#') || nextLine.startsWith('-')) break;
+    const token = imageDirectiveToken(nextLine);
+    if (!token) continue;
+    const image = officialPreviewImage(token);
+    if (image) return image;
+  }
+  return undefined;
+}
+
 // Parse a single tool markdown file into the standard tool object.
 function parseToolFile(filePath, category, subcategory) {
   const { data, content } = matter(fs.readFileSync(filePath, 'utf8'));
@@ -309,6 +362,7 @@ function parseToolFile(filePath, category, subcategory) {
     category: data.category || category,
     subcategory: data.subcategory || subcategory || '__NO_SUBCATEGORY__',
     source: extractSourceFromUrl(url),
+    ...imageProps(data.image),
     // Optional cross-category dimensions: a tool may be, e.g., a platform CLI
     // that also ships agent skills (tags: [agent-skills]) or an MCP server.
     ...(Array.isArray(data.tags) ? { tags: data.tags } : {}),
