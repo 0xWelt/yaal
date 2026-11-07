@@ -35,3 +35,73 @@ lint-staged are no longer used. Configuration lives in a single `vite.config.ts`
 
 - **Conversation language**: Use Chinese for user communication
 - **Code language**: Use English for code, comments, and commit messages
+
+## List data sources
+
+The parser supports two modes, switched automatically by whether a `contents/` directory exists next to `README.md`. Diverging from these formats can cause entries to be skipped silently or the build to fail.
+
+### README mode
+
+```markdown
+# Project title
+
+> Short description (required).
+
+## Category name
+
+> Optional category description.
+
+### Subcategory name
+
+> Optional subcategory description.
+
+#### [Tool name](https://example.com)
+
+Tool description paragraph.
+
+#### [Another tool](https://example.org)
+
+Another description.
+```
+
+Supported entry formats:
+
+1. `#### [Name](link)` — put the description on the following non-empty, non-heading line.
+2. `- [Name](link) - inline description`
+
+Keep translated copies (such as `README.es-ES.md`) in sync with the main README.
+
+### Directory mode (`contents/`)
+
+```
+contents/
+├── <category>/
+│   ├── _meta.md                 # YAML frontmatter: title; body is the category description
+│   └── <subcategory>/
+│       ├── _meta.md             # YAML frontmatter: title; body is the subcategory description
+│       └── <tool>.md            # YAML frontmatter + body description
+```
+
+Tool file frontmatter:
+
+```yaml
+---
+name: Tool Name
+link: https://example.com
+---
+Tool description paragraph.
+```
+
+`category` / `subcategory` may also be set in frontmatter to override path inference; otherwise they come from the directory path.
+
+## Taxonomy maintenance
+
+Design categories from currently listed entries only. Do not reserve empty directories or empty sections for types that do not exist yet.
+
+Whenever you add a new item, re-evaluate whether the current taxonomy still makes sense:
+
+- If the item does not fit a current category cleanly, create a new category and put it there.
+- If existing categories are unclear, draw a distinction without a real difference, are empty shells, or no longer hold after the new item, adjust them in the same change and migrate existing entries.
+- Do not keep empty “might need later” categories.
+
+This applies to both `contents/` directory mode and README heading mode.
