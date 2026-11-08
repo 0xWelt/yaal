@@ -9,8 +9,13 @@ import { config } from '@/lib/config';
 import { initializeColorManager } from '@/lib/colorManager';
 import { githubConfig } from '@/lib/githubConfig';
 import {
-  appendPathParams,
-  pathFromSearchParams,
+  appendNestedParams,
+  browseCategories,
+  clearNested,
+  resolveBrowseQuery,
+  tagsForSelection,
+  toggleNested,
+  toolBrowseGroups,
   toolGroups,
   toolMatchesSelection,
 } from '@/lib/groupFilters';
@@ -58,17 +63,24 @@ export default function Home() {
   const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedPath, setSelectedPath] = useState<string[]>([]);
+  const [selectedNested, setSelectedNested] = useState<string[][]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Subcategory filtering only makes sense with exactly one category selected.
-  const singleCategory =
-    selectedCategories.length === 1 ? selectedCategories[0] : '';
+  const selectedCategory = selectedCategories[0] || '';
+  const browse = useMemo(() => browseCategories(categories), [categories]);
 
-  const allTags = useMemo(
-    () => Array.from(new Set(tools.flatMap((tool) => tool.tags ?? []))).sort(),
-    [tools]
+  // Tags belong to the current category, narrowed by selected subcategories.
+  const scopedTags = useMemo(
+    () => tagsForSelection(tools, categories, selectedCategory, selectedNested),
+    [tools, categories, selectedCategory, selectedNested]
+  );
+  const activeTags = useMemo(
+    () =>
+      selectedCategory
+        ? selectedTags.filter((tag) => scopedTags.includes(tag))
+        : [],
+    [selectedCategory, selectedTags, scopedTags]
   );
 
   useEffect(() => {
@@ -116,17 +128,21 @@ export default function Home() {
         setFilteredTools(toolsData);
 
         // Restore filters from the URL (?category=a&subcategory=x&group=y&tag=t).
-        // `subcategory` is the first child group so existing links keep working.
-        // Deeper directory levels are repeated `group` params.
+        // Repeated category params collapse to one browse category. A wrapper
+        // such as Terminal Products resolves to the child named by subcategory.
         const params = new URLSearchParams(window.location.search);
-        const categoryParams = params
-          .getAll('category')
-          .filter((c) => c in categoriesData);
-        setSelectedCategories(categoryParams);
-        setSelectedPath(
-          pathFromSearchParams(params, categoryParams.length === 1)
+        const resolved = resolveBrowseQuery(categoriesData, params);
+        const allowedTags = tagsForSelection(
+          toolsData,
+          categoriesData,
+          resolved.category,
+          resolved.nested
         );
-        setSelectedTags(params.getAll('tag'));
+        setSelectedCategories(resolved.category ? [resolved.category] : []);
+        setSelectedNested(resolved.nested);
+        setSelectedTags(
+          resolved.tags.filter((tag) => allowedTags.includes(tag))
+        );
       } catch (error) {
         console.error('Error loading data:', error);
         // 显示错误信息给用户
@@ -168,45 +184,80 @@ export default function Home() {
       );
     }
 
-    // Categories (OR) and the selected directory path under a single category.
+    // One top-level category, then OR within each nested level.
     filtered = filtered.filter((tool) =>
-      toolMatchesSelection(tool, selectedCategories, selectedPath)
+      toolMatchesSelection(
+        tool,
+        selectedCategory ? [selectedCategory] : [],
+        selectedNested,
+        categories
+      )
     );
 
-    // Tags: OR within the selection, AND with the category filter
-    if (selectedTags.length > 0) {
+    // Tags: OR within the selection, AND with the category filter.
+    if (activeTags.length > 0) {
       filtered = filtered.filter((tool) =>
-        (tool.tags ?? []).some((tag) => selectedTags.includes(tag))
+        (tool.tags ?? []).some((tag) => activeTags.includes(tag))
       );
     }
 
     setFilteredTools(filtered);
-  }, [tools, searchTerm, selectedCategories, selectedPath, selectedTags]);
+  }, [
+    tools,
+    categories,
+    searchTerm,
+    selectedCategory,
+    selectedNested,
+    activeTags,
+  ]);
+
+  // Drop tags that are not on the entries currently in view.
+  useEffect(() => {
+    if (loading) return;
+    setSelectedTags((prev) => {
+      const next = selectedCategory
+        ? prev.filter((tag) => scopedTags.includes(tag))
+        : [];
+      if (
+        next.length === prev.length &&
+        next.every((tag, index) => tag === prev[index])
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [loading, scopedTags, selectedCategory]);
 
   // Keep the URL in sync so filtered views can be shared / reloaded.
   useEffect(() => {
     if (loading) return;
     const params = new URLSearchParams();
-    selectedCategories.forEach((c) => params.append('category', c));
-    if (singleCategory) appendPathParams(params, selectedPath);
-    selectedTags.forEach((t) => params.append('tag', t));
+    if (selectedCategory) {
+      params.set('category', selectedCategory);
+      appendNestedParams(params, selectedNested);
+      activeTags.forEach((tag) => params.append('tag', tag));
+    }
     const query = params.toString();
     const url = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
     window.history.replaceState(null, '', url);
-  }, [loading, selectedCategories, singleCategory, selectedPath, selectedTags]);
+  }, [loading, selectedCategory, selectedNested, activeTags]);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
   const handleCategoryToggle = (category: string) => {
-    setSelectedCategories((prev) => toggle(prev, category));
-    setSelectedPath([]);
+    setSelectedCategories((prev) =>
+      prev.length === 1 && prev[0] === category ? [] : [category]
+    );
+    setSelectedNested([]);
+    setSelectedTags([]);
   };
 
-  // Card badges focus one category and, for a nested group, the path to it.
+  // Card badges focus one browse category and the single path down to a group.
   const handleSelectGroup = (category: string, path: string[]) => {
-    setSelectedCategories([category]);
-    setSelectedPath(path);
+    setSelectedCategories(category ? [category] : []);
+    setSelectedNested(path.filter(Boolean).map((name) => [name]));
+    setSelectedTags([]);
   };
 
   const handleTagToggle = (tag: string) => {
@@ -215,9 +266,14 @@ export default function Home() {
 
   const handleClearTopNavSelection = () => {
     setSelectedCategories([]);
-    setSelectedPath([]);
+    setSelectedNested([]);
     setSelectedTags([]);
   };
+
+  const nestedLabel = selectedNested
+    .map((names) => names.filter(Boolean).join(', '))
+    .filter(Boolean)
+    .join(' > ');
 
   if (loading) {
     return (
@@ -237,13 +293,18 @@ export default function Home() {
       <Header title={projectInfo.title} description={projectInfo.description} />
 
       <TopNavPanel
-        categories={categories}
+        categories={browse}
         selectedCategories={selectedCategories}
-        selectedPath={selectedPath}
-        tags={allTags}
-        selectedTags={selectedTags}
+        selectedNested={selectedNested}
+        tags={scopedTags}
+        selectedTags={activeTags}
         onCategoryToggle={handleCategoryToggle}
-        onPathChange={setSelectedPath}
+        onNestedToggle={(depth, name) =>
+          setSelectedNested((prev) => toggleNested(prev, depth, name))
+        }
+        onNestedClear={(depth) =>
+          setSelectedNested((prev) => clearNested(prev, depth))
+        }
         onTagToggle={handleTagToggle}
         onClearSelection={handleClearTopNavSelection}
       />
@@ -257,20 +318,14 @@ export default function Home() {
             placeholder="Search tools, descriptions, or tags..."
           />
 
-          {(searchTerm ||
-            selectedCategories.length > 0 ||
-            selectedTags.length > 0) && (
+          {(searchTerm || selectedCategory || activeTags.length > 0) && (
             <div className="mt-4">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Showing {filteredTools.length} of {tools.length} items
                 {searchTerm && ` for "${searchTerm}"`}
-                {selectedCategories.length > 0 &&
-                  ` in ${selectedCategories.join(', ')}`}
-                {singleCategory &&
-                  selectedPath.length > 0 &&
-                  ` > ${selectedPath.join(' > ')}`}
-                {selectedTags.length > 0 &&
-                  ` tagged ${selectedTags.join(', ')}`}
+                {selectedCategory && ` in ${selectedCategory}`}
+                {nestedLabel && ` > ${nestedLabel}`}
+                {activeTags.length > 0 && ` tagged ${activeTags.join(', ')}`}
               </p>
             </div>
           )}
@@ -283,6 +338,7 @@ export default function Home() {
               <ToolCard
                 key={`${tool.name}-${index}`}
                 tool={tool}
+                groups={toolBrowseGroups(tool, categories)}
                 onSelectGroup={handleSelectGroup}
               />
             ))}

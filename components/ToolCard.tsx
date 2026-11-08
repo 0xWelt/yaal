@@ -17,10 +17,15 @@ interface Tool {
 
 interface ToolCardProps {
   tool: Tool;
+  groups?: string[];
   onSelectGroup?: (_category: string, _path: string[]) => void;
 }
 
-export default function ToolCard({ tool, onSelectGroup }: ToolCardProps) {
+export default function ToolCard({
+  tool,
+  groups,
+  onSelectGroup,
+}: ToolCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [failedImage, setFailedImage] = useState<string | null>(null);
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
@@ -34,6 +39,8 @@ export default function ToolCard({ tool, onSelectGroup }: ToolCardProps) {
     // 使用全局颜色管理器获取颜色
     return colorManager.getSubcategoryColor(category, subcategory);
   };
+
+  const visibleGroups = groups && groups.length > 0 ? groups : toolGroups(tool);
 
   const getDomainFromUrl = (url: string) => {
     try {
@@ -106,11 +113,11 @@ export default function ToolCard({ tool, onSelectGroup }: ToolCardProps) {
 
         {/* 分类标签 */}
         <div className="flex flex-wrap gap-1.5">
-          {toolGroups(tool).map((group, index) =>
+          {visibleGroups.map((group, index) =>
             index === 0 ? (
               <button
                 key={`${group}-${index}`}
-                onClick={() => onSelectGroup?.(tool.category, [])}
+                onClick={() => onSelectGroup?.(visibleGroups[0], [])}
                 className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition-all duration-200 hover:scale-105 hover:shadow-sm dark:border-blue-400/30 dark:bg-blue-400/20 dark:text-blue-100"
               >
                 {group}
@@ -120,8 +127,8 @@ export default function ToolCard({ tool, onSelectGroup }: ToolCardProps) {
                 key={`${group}-${index}`}
                 onClick={() =>
                   onSelectGroup?.(
-                    tool.category,
-                    toolGroups(tool).slice(1, index + 1)
+                    visibleGroups[0],
+                    visibleGroups.slice(1, index + 1)
                   )
                 }
                 className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-200 hover:scale-105 hover:shadow-sm ${getSubcategoryColor(tool.category, group)}`}
