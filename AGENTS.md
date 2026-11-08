@@ -81,14 +81,22 @@ Keep translated copies (such as `README.es-ES.md`) in sync with the main README.
 
 ### Directory mode (`contents/`)
 
+Every `*.md` file under `contents/` except `_meta.md` is an entry, at whatever depth that category actually uses. Do not hardcode a fixed number of levels, and do not add empty directories.
+
 ```
 contents/
-├── <category>/
-│   ├── _meta.md                 # YAML frontmatter: title; body is the category description
-│   └── <subcategory>/
-│       ├── _meta.md             # YAML frontmatter: title; body is the subcategory description
-│       └── <tool>.md            # YAML frontmatter + body description
+├── <section>/
+│   ├── _meta.md                 # YAML frontmatter: title; body is the group description
+│   ├── <entry>.md               # one grouping level
+│   └── <group>/
+│       ├── _meta.md
+│       ├── <entry>.md           # two grouping levels
+│       └── <deeper-group>/
+│           ├── _meta.md
+│           └── <entry>.md       # deeper trees keep nesting the same way
 ```
+
+Each directory's `_meta.md` is optional. `title` overrides the folder name; the body is the description shown on that level's filter chip. A directory with no entries anywhere under it is ignored. Filter chips follow the path that exists under the current selection, and a group with no children does not add an empty chip row.
 
 Tool file frontmatter:
 
@@ -101,9 +109,9 @@ image: https://example.com/preview.png # optional
 Tool description paragraph.
 ```
 
-`image` is not required. When present, it must be an absolute `https` URL of the product's official preview image (typically the page's Open Graph image). Do not commit an image binary, and do not use an unofficial screenshot. If `image` is absent, it is omitted from the generated data.
+`image` is not required. When present, it must be an absolute `https` URL of the product's official preview image (typically the page's Open Graph image). Do not commit an image binary, and do not use an unofficial screenshot. If `image` is absent, it is omitted from the generated data. The small card icon is derived from `link` (site favicon, apple-touch-icon, or rel=icon) and is not a frontmatter field.
 
-`category` / `subcategory` may also be set in frontmatter to override path inference; otherwise they come from the directory path.
+`category` / `subcategory` may also be set in frontmatter to override the first two path segments. Deeper segments come from the directory path.
 
 ## Taxonomy maintenance
 

@@ -106,7 +106,7 @@ Examples:
       description = 'A curated list of awesome resources';
     }
 
-    // "Submit a tool" target: the instance's CONTRIBUTING.md when it exists
+    // "Submit an entry" target: the instance's CONTRIBUTING.md when it exists
     // next to the config, otherwise the repository's pull request list.
     const repoUrl = `https://github.com/${owner}/${repo}`;
     const hasContributing = fs.existsSync(

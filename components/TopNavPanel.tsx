@@ -1,50 +1,75 @@
+import { buildFilterRows } from '@/lib/groupFilters';
+
+interface GroupNode {
+  name: string;
+  description?: string;
+  children?: Record<string, GroupNode>;
+  subcategories?: Record<string, GroupNode>;
+  tools?: unknown[];
+}
+
 interface TopNavPanelProps {
-  categories: Record<
-    string,
-    {
-      name: string;
-      description: string;
-      subcategories: Record<
-        string,
-        {
-          name: string;
-          description: string;
-          tools: any[];
-        }
-      >;
-    }
-  >;
+  categories: Record<string, GroupNode>;
   selectedCategories: string[];
-  selectedSubcategory: string;
+  selectedPath: string[];
   tags: string[];
   selectedTags: string[];
   onCategoryToggle: (_category: string) => void;
-  onSubcategorySelect: (_subcategory: string) => void;
+  onPathChange: (_path: string[]) => void;
   onTagToggle: (_tag: string) => void;
   onClearSelection: () => void;
+}
+
+function ChipTooltip({
+  text,
+  widthClass,
+}: {
+  text?: string;
+  widthClass: string;
+}) {
+  if (!text) return null;
+  return (
+    <div className="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 hidden w-max max-w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 group-hover:block">
+      <div
+        className={`${widthClass} max-w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl`}
+      >
+        {text}
+        <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-t border-l border-gray-700 bg-gray-900"></div>
+      </div>
+    </div>
+  );
 }
 
 export default function TopNavPanel({
   categories,
   selectedCategories,
-  selectedSubcategory,
+  selectedPath,
   tags,
   selectedTags,
   onCategoryToggle,
-  onSubcategorySelect,
+  onPathChange,
   onTagToggle,
   onClearSelection,
 }: TopNavPanelProps) {
   const categoryKeys = Object.keys(categories);
-  // Subcategories are shown only when exactly one category is selected.
+  // Deeper directory rows are shown only when exactly one category is selected.
   const selectedCategory =
     selectedCategories.length === 1 ? selectedCategories[0] : '';
-  const hasSelection = selectedCategories.length > 0 || selectedTags.length > 0;
+  const hasSelection =
+    selectedCategories.length > 0 ||
+    selectedPath.length > 0 ||
+    selectedTags.length > 0;
+  const rows = buildFilterRows({
+    category: selectedCategory ? categories[selectedCategory] : null,
+    selectedPath: selectedCategory ? selectedPath : [],
+    tags,
+    selectedTags,
+  });
 
   return (
     <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm transition-colors duration-200 dark:bg-gray-900/95">
       <div className="container mx-auto px-4 py-3">
-        {/* Primary Categories — wrap so chips stay reachable on narrow widths */}
+        {/* Directory levels first: top-level categories, then each child level */}
         <div className="flex items-start gap-4">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <button
@@ -71,14 +96,10 @@ export default function TopNavPanel({
                 >
                   {category}
                 </button>
-                {categories[category]?.description && (
-                  <div className="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 hidden w-max max-w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 group-hover:block">
-                    <div className="w-80 max-w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
-                      {categories[category].description}
-                      <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-t border-l border-gray-700 bg-gray-900"></div>
-                    </div>
-                  </div>
-                )}
+                <ChipTooltip
+                  text={categories[category]?.description}
+                  widthClass="w-80"
+                />
               </div>
             ))}
           </div>
@@ -93,76 +114,69 @@ export default function TopNavPanel({
           )}
         </div>
 
-        {/* Tags (multi-select) */}
-        {tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-              Tags
-            </span>
-            {tags.map((tag) => (
+        {rows.map((row) =>
+          row.kind === 'groups' ? (
+            <div
+              key={`groups-${row.depth}`}
+              className="mt-2 flex flex-wrap items-center gap-2 pt-2"
+            >
               <button
-                key={tag}
-                onClick={() => onTagToggle(tag)}
-                aria-pressed={selectedTags.includes(tag)}
+                onClick={() => onPathChange(selectedPath.slice(0, row.depth))}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                  selectedTags.includes(tag)
+                  !row.selected
                     ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
-                #{tag}
+                All
               </button>
-            ))}
-          </div>
-        )}
-
-        {/* Subcategories */}
-        {selectedCategory &&
-          (() => {
-            const subcategories =
-              categories[selectedCategory]?.subcategories || {};
-            const validSubcategories = Object.keys(subcategories).filter(
-              (sub) => sub !== '__NO_SUBCATEGORY__'
-            );
-            if (validSubcategories.length === 0) return null;
-
-            return (
-              <div className="mt-2 flex flex-wrap items-center gap-2 pt-2">
+              {row.options.map((option) => (
+                <div key={option.name} className="group relative hover:z-20">
+                  <button
+                    onClick={() =>
+                      onPathChange([
+                        ...selectedPath.slice(0, row.depth),
+                        option.name,
+                      ])
+                    }
+                    aria-pressed={row.selected === option.name}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
+                      row.selected === option.name
+                        ? 'bg-primary-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {option.name}
+                  </button>
+                  <ChipTooltip text={option.description} widthClass="w-72" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              key="tags"
+              className="mt-2 flex flex-wrap items-center gap-2 pt-2"
+            >
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Tags
+              </span>
+              {row.tags.map((tag) => (
                 <button
-                  onClick={() => onSubcategorySelect('')}
+                  key={tag}
+                  onClick={() => onTagToggle(tag)}
+                  aria-pressed={row.selected.includes(tag)}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                    !selectedSubcategory
+                    row.selected.includes(tag)
                       ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
                 >
-                  All
+                  #{tag}
                 </button>
-                {validSubcategories.map((subcategory) => (
-                  <div key={subcategory} className="group relative hover:z-20">
-                    <button
-                      onClick={() => onSubcategorySelect(subcategory)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                        selectedSubcategory === subcategory
-                          ? 'bg-primary-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {subcategory}
-                    </button>
-                    {subcategories[subcategory]?.description && (
-                      <div className="pointer-events-none absolute top-full left-1/2 z-[100] mt-2 hidden w-max max-w-[min(18rem,calc(100vw-2rem))] -translate-x-1/2 group-hover:block">
-                        <div className="w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-center text-sm leading-relaxed whitespace-normal text-white shadow-xl">
-                          {subcategories[subcategory].description}
-                          <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-t border-l border-gray-700 bg-gray-900"></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+              ))}
+            </div>
+          )
+        )}
       </div>
     </div>
   );

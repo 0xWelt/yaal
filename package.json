@@ -17,6 +17,7 @@
     "build": "node scripts/generate-github-config.js && node scripts/parse-readme.js && next build",
     "start": "next start",
     "parse-readme": "node scripts/parse-readme.js",
+    "test": "node --test scripts/parse-readme.test.js lib/groupFilters.test.js lib/entryIcon.test.js",
     "prepare": "vp config"
   },
   "dependencies": {
