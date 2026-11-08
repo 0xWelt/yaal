@@ -7,7 +7,7 @@ import ArchitectureDiagram, {
 } from '@/components/ArchitectureDiagram';
 import Header from '@/components/Header';
 import { config } from '@/lib/config';
-import { countGroupedTools } from '@/lib/groupFilters';
+import { browseCategories, countGroupedTools } from '@/lib/groupFilters';
 
 interface CategoryOverview {
   name: string;
@@ -48,10 +48,20 @@ export default function ArchitecturePage() {
           }
         >;
         setArchitecture(archData);
+        const browsed = browseCategories(categoriesData as any) as Record<
+          string,
+          {
+            name?: string;
+            description?: string;
+            children?: Record<string, { tools?: unknown[] }>;
+            subcategories?: Record<string, { tools?: unknown[] }>;
+            tools?: unknown[];
+          }
+        >;
         setOverview(
-          Object.values(categoriesData).map((cat) => ({
-            name: cat.name,
-            description: cat.description,
+          Object.entries(browsed).map(([name, cat]) => ({
+            name: cat.name || name,
+            description: cat.description || '',
             count: countGroupedTools(cat),
           }))
         );

@@ -11,11 +11,12 @@ interface GroupNode {
 interface TopNavPanelProps {
   categories: Record<string, GroupNode>;
   selectedCategories: string[];
-  selectedPath: string[];
+  selectedNested: string[][];
   tags: string[];
   selectedTags: string[];
   onCategoryToggle: (_category: string) => void;
-  onPathChange: (_path: string[]) => void;
+  onNestedToggle: (_depth: number, _name: string) => void;
+  onNestedClear: (_depth: number) => void;
   onTagToggle: (_tag: string) => void;
   onClearSelection: () => void;
 }
@@ -43,25 +44,27 @@ function ChipTooltip({
 export default function TopNavPanel({
   categories,
   selectedCategories,
-  selectedPath,
+  selectedNested,
   tags,
   selectedTags,
   onCategoryToggle,
-  onPathChange,
+  onNestedToggle,
+  onNestedClear,
   onTagToggle,
   onClearSelection,
 }: TopNavPanelProps) {
   const categoryKeys = Object.keys(categories);
-  // Deeper directory rows are shown only when exactly one category is selected.
+  // The first row is single-select. A repeated category in state still shows
+  // only the first name that exists in this row.
   const selectedCategory =
-    selectedCategories.length === 1 ? selectedCategories[0] : '';
+    selectedCategories.find((category) => categories[category]) || '';
   const hasSelection =
-    selectedCategories.length > 0 ||
-    selectedPath.length > 0 ||
+    Boolean(selectedCategory) ||
+    selectedNested.some((names) => names.length > 0) ||
     selectedTags.length > 0;
   const rows = buildFilterRows({
     category: selectedCategory ? categories[selectedCategory] : null,
-    selectedPath: selectedCategory ? selectedPath : [],
+    selectedNested: selectedCategory ? selectedNested : [],
     tags,
     selectedTags,
   });
@@ -69,15 +72,15 @@ export default function TopNavPanel({
   return (
     <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm transition-colors duration-200 dark:bg-gray-900/95">
       <div className="container mx-auto px-4 py-3">
-        {/* Directory levels first: top-level categories, then each child level */}
+        {/* First row is one category. Nested rows below it are multi-select. */}
         <div className="flex items-start gap-4">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <button
               onClick={onClearSelection}
               className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
-                selectedCategories.length === 0
-                  ? 'bg-primary-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                selectedCategory
+                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  : 'bg-primary-600 text-white shadow-sm'
               }`}
             >
               All
@@ -87,9 +90,9 @@ export default function TopNavPanel({
               <div key={category} className="group relative hover:z-20">
                 <button
                   onClick={() => onCategoryToggle(category)}
-                  aria-pressed={selectedCategories.includes(category)}
+                  aria-pressed={category === selectedCategory}
                   className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
-                    selectedCategories.includes(category)
+                    category === selectedCategory
                       ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                   }`}
@@ -121,9 +124,9 @@ export default function TopNavPanel({
               className="mt-2 flex flex-wrap items-center gap-2 pt-2"
             >
               <button
-                onClick={() => onPathChange(selectedPath.slice(0, row.depth))}
+                onClick={() => onNestedClear(row.depth)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                  !row.selected
+                  row.selected.length === 0
                     ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
@@ -133,15 +136,10 @@ export default function TopNavPanel({
               {row.options.map((option) => (
                 <div key={option.name} className="group relative hover:z-20">
                   <button
-                    onClick={() =>
-                      onPathChange([
-                        ...selectedPath.slice(0, row.depth),
-                        option.name,
-                      ])
-                    }
-                    aria-pressed={row.selected === option.name}
+                    onClick={() => onNestedToggle(row.depth, option.name)}
+                    aria-pressed={row.selected.includes(option.name)}
                     className={`rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                      row.selected === option.name
+                      row.selected.includes(option.name)
                         ? 'bg-primary-600 text-white shadow-sm'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                     }`}
