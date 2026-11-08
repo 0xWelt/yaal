@@ -8,6 +8,12 @@ import Header from '@/components/Header';
 import { config } from '@/lib/config';
 import { initializeColorManager } from '@/lib/colorManager';
 import { githubConfig } from '@/lib/githubConfig';
+import {
+  appendPathParams,
+  pathFromSearchParams,
+  toolGroups,
+  toolMatchesSelection,
+} from '@/lib/groupFilters';
 
 const lastUpdated = new Date(githubConfig.buildTime).toISOString().slice(0, 10);
 
@@ -17,21 +23,17 @@ interface Tool {
   description: string;
   category: string;
   subcategory: string;
+  groups?: string[];
   tags?: string[];
   image?: string;
+  icon?: string;
 }
 
 interface CategoryData {
   name: string;
   description: string;
-  subcategories: Record<
-    string,
-    {
-      name: string;
-      description: string;
-      tools: any[];
-    }
-  >;
+  children?: Record<string, CategoryData>;
+  subcategories?: Record<string, CategoryData>;
   tools?: any[];
 }
 
@@ -56,7 +58,7 @@ export default function Home() {
   const [filteredTools, setFilteredTools] = useState<Tool[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedPath, setSelectedPath] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,16 +115,17 @@ export default function Home() {
         setProjectInfo(projectData);
         setFilteredTools(toolsData);
 
-        // Restore filters from the URL (?category=a&category=b&subcategory=x&tag=t).
-        // The architecture page links here with a single ?category=xxx.
+        // Restore filters from the URL (?category=a&subcategory=x&group=y&tag=t).
+        // `subcategory` is the first child group so existing links keep working.
+        // Deeper directory levels are repeated `group` params.
         const params = new URLSearchParams(window.location.search);
         const categoryParams = params
           .getAll('category')
           .filter((c) => c in categoriesData);
         setSelectedCategories(categoryParams);
-        if (categoryParams.length === 1) {
-          setSelectedSubcategory(params.get('subcategory') ?? '');
-        }
+        setSelectedPath(
+          pathFromSearchParams(params, categoryParams.length === 1)
+        );
         setSelectedTags(params.getAll('tag'));
       } catch (error) {
         console.error('Error loading data:', error);
@@ -158,23 +161,17 @@ export default function Home() {
           tool.description.toLowerCase().includes(term) ||
           tool.category.toLowerCase().includes(term) ||
           tool.subcategory.toLowerCase().includes(term) ||
+          toolGroups(tool).some((group) =>
+            group.toLowerCase().includes(term)
+          ) ||
           (tool.tags ?? []).some((tag) => tag.toLowerCase().includes(term))
       );
     }
 
-    // Categories: OR within the selection
-    if (selectedCategories.length > 0) {
-      filtered = filtered.filter((tool) =>
-        selectedCategories.includes(tool.category)
-      );
-    }
-
-    // Subcategory (only with a single category selected)
-    if (singleCategory && selectedSubcategory) {
-      filtered = filtered.filter(
-        (tool) => tool.subcategory === selectedSubcategory
-      );
-    }
+    // Categories (OR) and the selected directory path under a single category.
+    filtered = filtered.filter((tool) =>
+      toolMatchesSelection(tool, selectedCategories, selectedPath)
+    );
 
     // Tags: OR within the selection, AND with the category filter
     if (selectedTags.length > 0) {
@@ -184,51 +181,32 @@ export default function Home() {
     }
 
     setFilteredTools(filtered);
-  }, [
-    tools,
-    searchTerm,
-    selectedCategories,
-    singleCategory,
-    selectedSubcategory,
-    selectedTags,
-  ]);
+  }, [tools, searchTerm, selectedCategories, selectedPath, selectedTags]);
 
   // Keep the URL in sync so filtered views can be shared / reloaded.
   useEffect(() => {
     if (loading) return;
     const params = new URLSearchParams();
     selectedCategories.forEach((c) => params.append('category', c));
-    if (singleCategory && selectedSubcategory) {
-      params.set('subcategory', selectedSubcategory);
-    }
+    if (singleCategory) appendPathParams(params, selectedPath);
     selectedTags.forEach((t) => params.append('tag', t));
     const query = params.toString();
     const url = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
     window.history.replaceState(null, '', url);
-  }, [
-    loading,
-    selectedCategories,
-    singleCategory,
-    selectedSubcategory,
-    selectedTags,
-  ]);
+  }, [loading, selectedCategories, singleCategory, selectedPath, selectedTags]);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories((prev) => toggle(prev, category));
-    setSelectedSubcategory('');
+    setSelectedPath([]);
   };
 
-  // Clicking a category badge on a card focuses that single category.
-  const handleCategoryFocus = (category: string) => {
+  // Card badges focus one category and, for a nested group, the path to it.
+  const handleSelectGroup = (category: string, path: string[]) => {
     setSelectedCategories([category]);
-    setSelectedSubcategory('');
-  };
-
-  const handleTopNavSubcategorySelect = (subcategory: string) => {
-    setSelectedSubcategory(subcategory);
+    setSelectedPath(path);
   };
 
   const handleTagToggle = (tag: string) => {
@@ -237,7 +215,7 @@ export default function Home() {
 
   const handleClearTopNavSelection = () => {
     setSelectedCategories([]);
-    setSelectedSubcategory('');
+    setSelectedPath([]);
     setSelectedTags([]);
   };
 
@@ -261,11 +239,11 @@ export default function Home() {
       <TopNavPanel
         categories={categories}
         selectedCategories={selectedCategories}
-        selectedSubcategory={selectedSubcategory}
+        selectedPath={selectedPath}
         tags={allTags}
         selectedTags={selectedTags}
         onCategoryToggle={handleCategoryToggle}
-        onSubcategorySelect={handleTopNavSubcategorySelect}
+        onPathChange={setSelectedPath}
         onTagToggle={handleTagToggle}
         onClearSelection={handleClearTopNavSelection}
       />
@@ -289,8 +267,8 @@ export default function Home() {
                 {selectedCategories.length > 0 &&
                   ` in ${selectedCategories.join(', ')}`}
                 {singleCategory &&
-                  selectedSubcategory &&
-                  ` > ${selectedSubcategory}`}
+                  selectedPath.length > 0 &&
+                  ` > ${selectedPath.join(' > ')}`}
                 {selectedTags.length > 0 &&
                   ` tagged ${selectedTags.join(', ')}`}
               </p>
@@ -305,8 +283,7 @@ export default function Home() {
               <ToolCard
                 key={`${tool.name}-${index}`}
                 tool={tool}
-                onCategoryChange={handleCategoryFocus}
-                onSubcategoryChange={handleTopNavSubcategorySelect}
+                onSelectGroup={handleSelectGroup}
               />
             ))}
           </div>
@@ -344,7 +321,7 @@ export default function Home() {
             rel="noopener noreferrer"
             className="dark:text-primary-400 dark:hover:text-primary-300 font-medium text-primary-600 underline transition-colors duration-200 hover:text-primary-700"
           >
-            Submit a tool
+            Submit an entry
           </a>
           {' · '}
           <time dateTime={githubConfig.buildTime}>

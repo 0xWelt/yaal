@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import GitHubCorner from './GitHubCorner';
+import EntryIcon from './EntryIcon';
 import { colorManager } from '@/lib/colorManager';
+import { toolGroups } from '@/lib/groupFilters';
 
 interface Tool {
   name: string;
@@ -8,20 +10,17 @@ interface Tool {
   description: string;
   category: string;
   subcategory: string;
+  groups?: string[];
   image?: string;
+  icon?: string;
 }
 
 interface ToolCardProps {
   tool: Tool;
-  onCategoryChange?: (_category: string) => void;
-  onSubcategoryChange?: (_subcategory: string) => void;
+  onSelectGroup?: (_category: string, _path: string[]) => void;
 }
 
-export default function ToolCard({
-  tool,
-  onCategoryChange,
-  onSubcategoryChange,
-}: ToolCardProps) {
+export default function ToolCard({ tool, onSelectGroup }: ToolCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [failedImage, setFailedImage] = useState<string | null>(null);
   const [loadedImage, setLoadedImage] = useState<string | null>(null);
@@ -77,9 +76,10 @@ export default function ToolCard({
             href={tool.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="dark:hover:text-primary-400 line-clamp-2 text-xl font-bold text-gray-900 transition-colors duration-200 hover:text-primary-600 dark:text-white"
+            className="dark:hover:text-primary-400 flex items-start gap-2 text-xl font-bold text-gray-900 transition-colors duration-200 hover:text-primary-600 dark:text-white"
           >
-            {tool.name}
+            <EntryIcon name={tool.name} url={tool.url} icon={tool.icon} />
+            <span className="line-clamp-2 min-w-0">{tool.name}</span>
           </a>
           <div className="mt-1 text-sm text-gray-500 transition-colors duration-200 dark:text-gray-400">
             {getDomainFromUrl(tool.url)}
@@ -106,22 +106,29 @@ export default function ToolCard({
 
         {/* 分类标签 */}
         <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => onCategoryChange?.(tool.category)}
-            className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition-all duration-200 hover:scale-105 hover:shadow-sm dark:border-blue-400/30 dark:bg-blue-400/20 dark:text-blue-100"
-          >
-            {tool.category}
-          </button>
-          {tool.subcategory !== '__NO_SUBCATEGORY__' && (
-            <button
-              onClick={() => {
-                onCategoryChange?.(tool.category);
-                onSubcategoryChange?.(tool.subcategory);
-              }}
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-200 hover:scale-105 hover:shadow-sm ${getSubcategoryColor(tool.category, tool.subcategory)}`}
-            >
-              {tool.subcategory}
-            </button>
+          {toolGroups(tool).map((group, index) =>
+            index === 0 ? (
+              <button
+                key={`${group}-${index}`}
+                onClick={() => onSelectGroup?.(tool.category, [])}
+                className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition-all duration-200 hover:scale-105 hover:shadow-sm dark:border-blue-400/30 dark:bg-blue-400/20 dark:text-blue-100"
+              >
+                {group}
+              </button>
+            ) : (
+              <button
+                key={`${group}-${index}`}
+                onClick={() =>
+                  onSelectGroup?.(
+                    tool.category,
+                    toolGroups(tool).slice(1, index + 1)
+                  )
+                }
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-200 hover:scale-105 hover:shadow-sm ${getSubcategoryColor(tool.category, group)}`}
+              >
+                {group}
+              </button>
+            )
           )}
         </div>
       </div>

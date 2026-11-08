@@ -95,12 +95,19 @@ export const extractSubcategoryOrder = (tools: any[]) => {
   const categoryMap: { [key: string]: Set<string> } = {};
 
   tools.forEach((tool) => {
-    if (tool.subcategory && tool.subcategory !== '__NO_SUBCATEGORY__') {
+    const groups: string[] =
+      Array.isArray(tool.groups) && tool.groups.length > 0
+        ? tool.groups
+        : tool.subcategory && tool.subcategory !== '__NO_SUBCATEGORY__'
+          ? [tool.category, tool.subcategory]
+          : [];
+    groups.slice(1).forEach((group) => {
+      if (!group || group === '__NO_SUBCATEGORY__') return;
       if (!categoryMap[tool.category]) {
         categoryMap[tool.category] = new Set();
       }
-      categoryMap[tool.category].add(tool.subcategory);
-    }
+      categoryMap[tool.category].add(group);
+    });
   });
 
   // 转换为有序数组并排序

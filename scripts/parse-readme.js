@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname } from 'path';
 import matter from 'gray-matter';
+import { attachEntryIcons } from '../lib/entryIcon.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -217,6 +218,8 @@ function parseReadme(readmePath) {
     }
   }
 
+  for (const tool of tools) finalizeTool(tool);
+
   return {
     title,
     description,
@@ -226,61 +229,100 @@ function parseReadme(readmePath) {
   };
 }
 
+// Every entry carries the full directory path in `groups`. `category` is the
+// first segment and `subcategory` stays the second segment (or the historical
+// sentinel) so existing two-level lists keep the same fields.
+function finalizeTool(tool) {
+  if (!Array.isArray(tool.groups) || tool.groups.length === 0) {
+    tool.groups =
+      tool.subcategory && tool.subcategory !== '__NO_SUBCATEGORY__'
+        ? [tool.category, tool.subcategory]
+        : [tool.category];
+  }
+  tool.category = tool.groups[0];
+  tool.subcategory = tool.groups[1] || '__NO_SUBCATEGORY__';
+  return tool;
+}
+
+// Insert tools into a tree keyed by group title. Depth is whatever each
+// entry's `groups` array contains — nothing here assumes two or three levels.
+function buildTree(tools, descByPath) {
+  const categories = {};
+
+  for (const tool of tools) {
+    finalizeTool(tool);
+    const groups = tool.groups;
+    const categoryName = groups[0];
+    if (!categories[categoryName]) {
+      categories[categoryName] = {
+        name: categoryName,
+        description: descByPath.get(categoryName) || '',
+        children: {},
+      };
+    }
+
+    let node = categories[categoryName];
+    for (let i = 1; i < groups.length; i++) {
+      const name = groups[i];
+      if (!node.children[name]) {
+        node.children[name] = {
+          name,
+          description: descByPath.get(groups.slice(0, i + 1).join('\0')) || '',
+          children: {},
+        };
+      }
+      node = node.children[name];
+    }
+
+    if (!node.tools) node.tools = [];
+    node.tools.push(tool);
+  }
+
+  return categories;
+}
+
+function countEntries(node) {
+  const direct = Array.isArray(node.tools) ? node.tools.length : 0;
+  const children = node.children || node.subcategories || {};
+  return (
+    direct +
+    Object.values(children).reduce((sum, child) => sum + countEntries(child), 0)
+  );
+}
+
 // 生成分类结构
 function generateCategories(
   tools,
   categoryDescriptions,
   subcategoryDescriptions
 ) {
-  const categories = {};
-
-  tools.forEach((tool) => {
-    if (!categories[tool.category]) {
-      categories[tool.category] = {
-        name: tool.category,
-        description: categoryDescriptions[tool.category] || '',
-        subcategories: {},
-      };
-    }
-
-    // 使用工具的子分类，如果是特殊标记则直接放在分类下
-    const effectiveSubcategory = tool.subcategory || tool.category;
-
-    if (effectiveSubcategory === '__NO_SUBCATEGORY__') {
-      // 对于没有子分类的情况，直接放在分类下，不创建子分类
-      if (!categories[tool.category].tools) {
-        categories[tool.category].tools = [];
-      }
-      categories[tool.category].tools.push(tool);
-    } else {
-      // 正常的子分类处理
-      const subcategoryKey = `${tool.category}::${effectiveSubcategory}`;
-
-      if (!categories[tool.category].subcategories[effectiveSubcategory]) {
-        categories[tool.category].subcategories[effectiveSubcategory] = {
-          name: effectiveSubcategory,
-          description: subcategoryDescriptions[subcategoryKey] || '',
-          tools: [],
-        };
-      }
-
-      categories[tool.category].subcategories[effectiveSubcategory].tools.push(
-        tool
-      );
-    }
-  });
-
-  return categories;
+  const descByPath = new Map();
+  for (const [category, description] of Object.entries(
+    categoryDescriptions || {}
+  )) {
+    descByPath.set(category, description || '');
+  }
+  for (const [key, description] of Object.entries(
+    subcategoryDescriptions || {}
+  )) {
+    const splitAt = key.indexOf('::');
+    if (splitAt === -1) continue;
+    const category = key.slice(0, splitAt);
+    const subcategory = key.slice(splitAt + 2);
+    if (!category || !subcategory) continue;
+    descByPath.set([category, subcategory].join('\0'), description || '');
+  }
+  return buildTree(tools, descByPath);
 }
 
 // ============ Directory mode (contents/) ============
 // When a `contents/` directory exists next to README.md, parse it instead of
-// the monolithic README. Layout:
-//   contents/<category>/_meta.md          - category metadata (title, description)
-//   contents/<category>/<subcategory>/_meta.md - subcategory metadata
-//   contents/<category>/<subcategory>/<tool>.md - tool entry with YAML frontmatter
-// Tool file frontmatter: name, link, optional image (absolute https URL),
-// category/subcategory (optional). `image` is omitted when absent or invalid.
+// the monolithic README. Every entry markdown except `_meta.md` is indexed at
+// any depth. A category may be one grouping level (`contents/<section>/<file>`),
+// two (`contents/<section>/<group>/<file>`), or deeper. `_meta.md` supplies the
+// title and description for that directory. Frontmatter `category` / `subcategory`
+// override the first two segments; deeper segments always come from the path.
+// `image` is an optional absolute https preview and is omitted when invalid.
 
 // Read metadata from a _meta.md file (YAML frontmatter + optional body description).
 function readMeta(filePath, fallbackName) {
@@ -350,100 +392,94 @@ function readmeImage(lines, startIndex) {
   return undefined;
 }
 
-// Parse a single tool markdown file into the standard tool object.
-function parseToolFile(filePath, category, subcategory) {
+// Frontmatter may replace the category and the first child group. Segments
+// below that stay on the directory path, so depth is never truncated.
+function resolveGroups(dirTitles, data) {
+  const groups = Array.isArray(dirTitles) ? [...dirTitles] : [];
+  if (typeof data.category === 'string' && data.category.trim()) {
+    const category = data.category.trim();
+    if (groups.length === 0) groups.push(category);
+    else groups[0] = category;
+  }
+  if (typeof data.subcategory === 'string' && data.subcategory.trim()) {
+    const subcategory = data.subcategory.trim();
+    if (groups.length < 2) groups.push(subcategory);
+    else groups[1] = subcategory;
+  }
+  if (groups.length === 0) groups.push('Uncategorized');
+  return groups;
+}
+
+function readEntryFile(filePath, dirTitles) {
   const { data, content } = matter(fs.readFileSync(filePath, 'utf8'));
   const url = data.link || data.url || '';
   const name = data.name || path.basename(filePath, '.md');
-  return {
+  return finalizeTool({
     name,
     url,
     description: (content || '').trim() || data.description || '',
-    category: data.category || category,
-    subcategory: data.subcategory || subcategory || '__NO_SUBCATEGORY__',
+    groups: resolveGroups(dirTitles, data),
     source: extractSourceFromUrl(url),
     ...imageProps(data.image),
     // Optional cross-category dimensions: a tool may be, e.g., a platform CLI
     // that also ships agent skills (tags: [agent-skills]) or an MCP server.
     ...(Array.isArray(data.tags) ? { tags: data.tags } : {}),
-  };
+  });
+}
+
+function listEntryFiles(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith('.md') &&
+        entry.name !== '_meta.md'
+    )
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b.name));
+}
+
+function listChildDirs(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Index entry files at this directory, then recurse. `_meta.md` is metadata
+// for the directory itself and is never an entry. Empty directories add nothing.
+function walkContents(dir, titles, tools, descByPath) {
+  for (const name of listEntryFiles(dir)) {
+    tools.push(readEntryFile(path.join(dir, name), titles));
+  }
+  for (const entry of listChildDirs(dir)) {
+    const childDir = path.join(dir, entry.name);
+    const meta = readMeta(path.join(childDir, '_meta.md'), entry.name);
+    const nextTitles = [...titles, meta.title];
+    descByPath.set(nextTitles.join('\0'), meta.description || '');
+    walkContents(childDir, nextTitles, tools, descByPath);
+  }
 }
 
 // Scan a contents/ directory tree and build categories + tools.
 function parseContentsDirectory(contentsDir) {
-  const categories = {};
   const tools = [];
+  const descByPath = new Map();
 
-  const categoryDirs = fs
-    .readdirSync(contentsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  for (const catEntry of categoryDirs) {
-    const catDir = path.join(contentsDir, catEntry.name);
-    const catMeta = readMeta(path.join(catDir, '_meta.md'), catEntry.name);
-    const categoryName = catMeta.title;
-    const category = {
-      name: categoryName,
-      description: catMeta.description,
-      subcategories: {},
-    };
-
-    // Subcategory directories
-    const subDirs = fs
-      .readdirSync(catDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    for (const subEntry of subDirs) {
-      const subDir = path.join(catDir, subEntry.name);
-      const subMeta = readMeta(path.join(subDir, '_meta.md'), subEntry.name);
-      const subcategoryName = subMeta.title;
-      const subTools = [];
-
-      const toolFiles = fs
-        .readdirSync(subDir)
-        .filter((f) => f.endsWith('.md') && f !== '_meta.md')
-        .sort();
-
-      for (const f of toolFiles) {
-        const tool = parseToolFile(
-          path.join(subDir, f),
-          categoryName,
-          subcategoryName
-        );
-        subTools.push(tool);
-        tools.push(tool);
-      }
-
-      category.subcategories[subcategoryName] = {
-        name: subcategoryName,
-        description: subMeta.description,
-        tools: subTools,
-      };
-    }
-
-    // Tool files directly under the category (no subcategory)
-    const directTools = fs
-      .readdirSync(catDir)
-      .filter((f) => f.endsWith('.md') && f !== '_meta.md')
-      .sort();
-    if (directTools.length) {
-      category.tools = directTools.map((f) => {
-        const tool = parseToolFile(
-          path.join(catDir, f),
-          categoryName,
-          '__NO_SUBCATEGORY__'
-        );
-        tools.push(tool);
-        return tool;
-      });
-    }
-
-    categories[categoryName] = category;
+  for (const entry of listChildDirs(contentsDir)) {
+    const categoryDir = path.join(contentsDir, entry.name);
+    const meta = readMeta(path.join(categoryDir, '_meta.md'), entry.name);
+    descByPath.set(meta.title, meta.description || '');
+    walkContents(categoryDir, [meta.title], tools, descByPath);
   }
 
-  return { categories, tools };
+  // Entry files sitting directly in contents/ still count.
+  for (const name of listEntryFiles(contentsDir)) {
+    tools.push(readEntryFile(path.join(contentsDir, name), []));
+  }
+
+  return { categories: buildTree(tools, descByPath), tools };
 }
 
 // Extract the # title and first descriptive line from a README (directory mode).
@@ -549,7 +585,7 @@ function extractArchitecture(readmePath) {
 }
 
 // 主函数
-function main() {
+async function main() {
   // 显示帮助信息
   if (process.argv.includes('--help') || process.argv.includes('-h')) {
     console.log(`
@@ -624,6 +660,10 @@ Examples:
       );
     }
 
+    // Icons are best-effort. A failed lookup must not drop the entry.
+    await attachEntryIcons(tools);
+    const iconCount = tools.filter((tool) => tool.icon).length;
+
     // 创建数据目录 - 只保留public/data，移除重复的data目录
     const publicDataDir = path.join(__dirname, '..', 'public', 'data');
 
@@ -669,19 +709,14 @@ Examples:
 
     console.log(`Parsing complete! Found ${tools.length} items`);
     console.log(`Categories: ${Object.keys(categories).length}`);
+    console.log(`Icons: ${iconCount}/${tools.length}`);
     console.log(`Title: ${title}`);
     console.log(`Description: ${description}`);
 
     Object.keys(categories).forEach((category) => {
-      const subcategories = Object.keys(categories[category].subcategories);
-      const totalTools =
-        subcategories.reduce(
-          (sum, sub) =>
-            sum + categories[category].subcategories[sub].tools.length,
-          0
-        ) + (categories[category].tools || []).length;
+      const childGroups = Object.keys(categories[category].children || {});
       console.log(
-        `- ${category}: ${subcategories.length} subcategories, ${totalTools} items`
+        `- ${category}: ${childGroups.length} child groups, ${countEntries(categories[category])} items`
       );
     });
   } catch (error) {
@@ -690,10 +725,15 @@ Examples:
   }
 }
 
+export { parseContentsDirectory, parseReadme, generateCategories };
+
 // 如果直接运行此脚本
-if (
-  import.meta.url === `file://${process.argv[1]}` ||
-  import.meta.url.endsWith('parse-readme.js')
-) {
-  main();
+const invokedDirectly =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+  main().catch((error) => {
+    console.error('❌ Error parsing README:', error.message);
+    process.exit(1);
+  });
 }

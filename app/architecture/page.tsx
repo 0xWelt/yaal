@@ -7,6 +7,7 @@ import ArchitectureDiagram, {
 } from '@/components/ArchitectureDiagram';
 import Header from '@/components/Header';
 import { config } from '@/lib/config';
+import { countGroupedTools } from '@/lib/groupFilters';
 
 interface CategoryOverview {
   name: string;
@@ -41,23 +42,18 @@ export default function ArchitecturePage() {
           {
             name: string;
             description: string;
-            subcategories: Record<string, { tools: any[] }>;
-            tools?: any[];
+            children?: Record<string, { tools?: unknown[] }>;
+            subcategories?: Record<string, { tools?: unknown[] }>;
+            tools?: unknown[];
           }
         >;
         setArchitecture(archData);
         setOverview(
-          Object.values(categoriesData).map((cat) => {
-            const subTools = Object.values(cat.subcategories).reduce(
-              (sum, sub) => sum + (sub.tools?.length || 0),
-              0
-            );
-            return {
-              name: cat.name,
-              description: cat.description,
-              count: subTools + (cat.tools?.length || 0),
-            };
-          })
+          Object.values(categoriesData).map((cat) => ({
+            name: cat.name,
+            description: cat.description,
+            count: countGroupedTools(cat),
+          }))
         );
       } catch (e) {
         console.error('Failed to load architecture:', e);

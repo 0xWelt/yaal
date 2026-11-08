@@ -32,3 +32,6 @@ jobs:
 
       - name: Validate README parsing
         run: vp run parse-readme
+
+      - name: Test directory walker and filters
+        run: node --test scripts/parse-readme.test.js lib/groupFilters.test.js lib/entryIcon.test.js
