@@ -77,7 +77,7 @@ export default function ArchitecturePage() {
     <div className="flex min-h-screen flex-col bg-gray-50 transition-colors duration-200 dark:bg-gray-900">
       <Header
         title="Architecture"
-        description="The vibe coding ecosystem at a glance — click any element to explore its tools."
+        description="The list at a glance — click any element to explore its entries."
       />
 
       <main className="container mx-auto flex-1 px-4 py-10">
